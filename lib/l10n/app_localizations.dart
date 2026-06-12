@@ -170,6 +170,12 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get themeDark;
 
+  /// Label for the avatar selector in settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Avatar'**
+  String get avatarLabel;
+
   /// No description provided for @loginTitle.
   ///
   /// In en, this message translates to:
@@ -385,6 +391,510 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try Again'**
   String get retryButton;
+
+  /// Button that starts tracking the user's run.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Running'**
+  String get startRunButton;
+
+  /// No description provided for @stopRunButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish Run'**
+  String get stopRunButton;
+
+  /// No description provided for @newRunButton.
+  ///
+  /// In en, this message translates to:
+  /// **'New Run'**
+  String get newRunButton;
+
+  /// No description provided for @runDistanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get runDistanceLabel;
+
+  /// No description provided for @runAreaLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Area'**
+  String get runAreaLabel;
+
+  /// No description provided for @runFinishedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Run complete!'**
+  String get runFinishedTitle;
+
+  /// No description provided for @distanceMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'{meters} m'**
+  String distanceMeters(String meters);
+
+  /// No description provided for @distanceKilometers.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km'**
+  String distanceKilometers(String km);
+
+  /// No description provided for @areaSquareMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} m²'**
+  String areaSquareMeters(String value);
+
+  /// No description provided for @areaSquareKilometers.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} km²'**
+  String areaSquareKilometers(String value);
+
+  /// No description provided for @runElapsedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get runElapsedLabel;
+
+  /// No description provided for @runPaceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pace'**
+  String get runPaceLabel;
+
+  /// No description provided for @runCaloriesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Calories'**
+  String get runCaloriesLabel;
+
+  /// No description provided for @caloriesValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} kcal'**
+  String caloriesValue(String value);
+
+  /// No description provided for @paceSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'/km'**
+  String get paceSuffix;
+
+  /// No description provided for @unitKilometers.
+  ///
+  /// In en, this message translates to:
+  /// **'km'**
+  String get unitKilometers;
+
+  /// No description provided for @unitMeters.
+  ///
+  /// In en, this message translates to:
+  /// **'m'**
+  String get unitMeters;
+
+  /// No description provided for @unitKcal.
+  ///
+  /// In en, this message translates to:
+  /// **'kcal'**
+  String get unitKcal;
+
+  /// Title of the ongoing run notification.
+  ///
+  /// In en, this message translates to:
+  /// **'Run in progress'**
+  String get runOngoingTitle;
+
+  /// No description provided for @notificationChannelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Run tracking'**
+  String get notificationChannelName;
+
+  /// No description provided for @weightLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weight'**
+  String get weightLabel;
+
+  /// No description provided for @weightValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} kg'**
+  String weightValue(String value);
+
+  /// Title of the dialog shown after closing a loop to name the new territory.
+  ///
+  /// In en, this message translates to:
+  /// **'Name your land'**
+  String get claimTitle;
+
+  /// No description provided for @claimMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You enclosed an area of {area}. Give it a name, or leave it blank to use your username.'**
+  String claimMessage(String area);
+
+  /// No description provided for @territoryNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Land name'**
+  String get territoryNameLabel;
+
+  /// No description provided for @landNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown on all of your land'**
+  String get landNameHint;
+
+  /// No description provided for @saveButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get saveButton;
+
+  /// No description provided for @landNameUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Land name updated'**
+  String get landNameUpdated;
+
+  /// No description provided for @claimButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim Land'**
+  String get claimButton;
+
+  /// No description provided for @claimedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'You claimed \"{name}\"!'**
+  String claimedSnack(String name);
+
+  /// No description provided for @landsConquered.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 enemy land conquered!} other{{count} enemy lands conquered!}}'**
+  String landsConquered(int count);
+
+  /// No description provided for @runSavedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Run saved to your history.'**
+  String get runSavedSnack;
+
+  /// No description provided for @loopNotClosedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No land taken — close the loop by returning to your start point (or back into your own land).'**
+  String get loopNotClosedHint;
+
+  /// No description provided for @loopTooShortHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No land taken — go a bit farther, then loop back to close it.'**
+  String get loopTooShortHint;
+
+  /// No description provided for @historyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking History'**
+  String get historyTitle;
+
+  /// No description provided for @historyTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Walking history'**
+  String get historyTooltip;
+
+  /// No description provided for @historyEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet'**
+  String get historyEmptyTitle;
+
+  /// No description provided for @historyEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Start running to fill your history with routes and conquered lands.'**
+  String get historyEmptyMessage;
+
+  /// No description provided for @historyClaimedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Land claimed'**
+  String get historyClaimedBadge;
+
+  /// No description provided for @historyConqueredBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 conquered} other{{count} conquered}}'**
+  String historyConqueredBadge(int count);
+
+  /// No description provided for @territoryOwnerLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{username}\'s land'**
+  String territoryOwnerLabel(String username);
+
+  /// No description provided for @territoryYoursLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your land'**
+  String get territoryYoursLabel;
+
+  /// No description provided for @territoryClaimedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Claimed'**
+  String get territoryClaimedLabel;
+
+  /// No description provided for @territoryConqueredFromLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Conquered from {username}'**
+  String territoryConqueredFromLabel(String username);
+
+  /// No description provided for @leaderboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard'**
+  String get leaderboardTitle;
+
+  /// No description provided for @leaderboardTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Leaderboard'**
+  String get leaderboardTooltip;
+
+  /// No description provided for @leaderboardYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get leaderboardYou;
+
+  /// No description provided for @leaderboardEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No lands claimed yet. Be the first!'**
+  String get leaderboardEmpty;
+
+  /// No description provided for @leaderboardNoRank.
+  ///
+  /// In en, this message translates to:
+  /// **'Claim a land to enter the ranking.'**
+  String get leaderboardNoRank;
+
+  /// No description provided for @leaderboardCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 land} other{{count} lands}}'**
+  String leaderboardCount(int count);
+
+  /// No description provided for @howToPlayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'How to play'**
+  String get howToPlayLabel;
+
+  /// No description provided for @onboardingTitle1.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk to claim land'**
+  String get onboardingTitle1;
+
+  /// No description provided for @onboardingBody1.
+  ///
+  /// In en, this message translates to:
+  /// **'Start a run and walk a closed loop. The area you circle becomes your land.'**
+  String get onboardingBody1;
+
+  /// No description provided for @onboardingTitle2.
+  ///
+  /// In en, this message translates to:
+  /// **'Encircle to conquer'**
+  String get onboardingTitle2;
+
+  /// No description provided for @onboardingBody2.
+  ///
+  /// In en, this message translates to:
+  /// **'Run around a rival\'s land to take it. Fully surround it to take all of it; cross only part and you take just that piece.'**
+  String get onboardingBody2;
+
+  /// No description provided for @onboardingTitle3.
+  ///
+  /// In en, this message translates to:
+  /// **'Rule the map'**
+  String get onboardingTitle3;
+
+  /// No description provided for @onboardingBody3.
+  ///
+  /// In en, this message translates to:
+  /// **'Climb the leaderboard, name your land from settings, and find players near you.'**
+  String get onboardingBody3;
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get onboardingStart;
+
+  /// No description provided for @profileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profileTitle;
+
+  /// No description provided for @profileTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get profileTooltip;
+
+  /// No description provided for @profileRankLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Rank'**
+  String get profileRankLabel;
+
+  /// No description provided for @profileLandsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lands'**
+  String get profileLandsLabel;
+
+  /// No description provided for @profileRunsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Runs'**
+  String get profileRunsLabel;
+
+  /// No description provided for @profileConquestsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Conquests'**
+  String get profileConquestsLabel;
+
+  /// No description provided for @profileUnranked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unranked'**
+  String get profileUnranked;
+
+  /// No description provided for @chatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get chatTitle;
+
+  /// No description provided for @chatTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Messages'**
+  String get chatTooltip;
+
+  /// No description provided for @chatNearbyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby players'**
+  String get chatNearbyTitle;
+
+  /// No description provided for @chatNearbyEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No players nearby right now.'**
+  String get chatNearbyEmpty;
+
+  /// No description provided for @chatNoLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your location…'**
+  String get chatNoLocation;
+
+  /// No description provided for @chatEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No conversations yet'**
+  String get chatEmptyTitle;
+
+  /// No description provided for @chatEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Find nearby players and start chatting.'**
+  String get chatEmptyMessage;
+
+  /// No description provided for @chatMessageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get chatMessageHint;
+
+  /// No description provided for @chatEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'This chat has ended.'**
+  String get chatEnded;
+
+  /// No description provided for @chatEndChat.
+  ///
+  /// In en, this message translates to:
+  /// **'End chat'**
+  String get chatEndChat;
+
+  /// No description provided for @chatEndConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End chat?'**
+  String get chatEndConfirmTitle;
+
+  /// No description provided for @chatEndConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Neither of you will be able to message again.'**
+  String get chatEndConfirmMessage;
+
+  /// No description provided for @chatAway.
+  ///
+  /// In en, this message translates to:
+  /// **'{dist} away'**
+  String chatAway(String dist);
+
+  /// No description provided for @cancelButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancelButton;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search players by username'**
+  String get searchHint;
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No player found'**
+  String get searchNoResults;
+
+  /// No description provided for @searchNoTerritory.
+  ///
+  /// In en, this message translates to:
+  /// **'{username} has no land yet'**
+  String searchNoTerritory(String username);
 }
 
 class _AppLocalizationsDelegate

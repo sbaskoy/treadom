@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/app_snackbar.dart';
 import 'auth_error_messages.dart';
 import 'register_screen.dart';
 
@@ -47,8 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
     // otomatik olarak ana ekrana yönlendireceği için burada bir şey yapmaya
     // gerek yoktur.
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizedAuthError(l10n, error))),
+      showAppSnackBar(
+        context,
+        localizedAuthError(l10n, error),
+        type: AppSnackBarType.error,
       );
     }
   }

@@ -12,6 +12,10 @@ class AppUser {
   /// Kullanıcının seçtiği görünen ad (küçük harfe normalize edilmiş hali).
   final String username;
 
+  /// Kullanıcının TEK alan adı (tüm topraklarında bu görünür). Ayarlardan
+  /// değiştirilir; boşsa [username] kullanılır.
+  final String landName;
+
   /// Şimdiye kadar fethedilen toplam alan (metrekare). Aşama 4+ ile dolacak.
   final double totalAreaM2;
 
@@ -21,9 +25,14 @@ class AppUser {
   const AppUser({
     required this.uid,
     required this.username,
+    this.landName = '',
     this.totalAreaM2 = 0,
     this.createdAt,
   });
+
+  /// Alanlarda gösterilecek ad: özel alan adı yoksa kullanıcı adına düşer.
+  String get displayLandName =>
+      landName.trim().isEmpty ? username : landName.trim();
 
   /// Firestore dökümanından model oluşturur.
   factory AppUser.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -31,6 +40,7 @@ class AppUser {
     return AppUser(
       uid: doc.id,
       username: (data['username'] as String?) ?? '',
+      landName: (data['landName'] as String?) ?? '',
       totalAreaM2: (data['totalAreaM2'] as num?)?.toDouble() ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
@@ -41,6 +51,7 @@ class AppUser {
   Map<String, dynamic> toFirestore() {
     return {
       'username': username,
+      'landName': landName,
       'totalAreaM2': totalAreaM2,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)

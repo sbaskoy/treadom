@@ -1,9 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- İnternet: Firebase (giriş/Firestore), harita karoları ve fontlar için
+         zorunlu. Flutter bunu yalnızca debug'a otomatik ekler; release APK'nın
+         çalışması için ana manifest'te de bulunmalıdır. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
     <!-- Konum izinleri: oyunun çekirdeği kullanıcının gerçek konumunu izlemek
          olduğu için gereklidir. COARSE düşük doğruluklu, FINE yüksek doğruluklu
          konum içindir; ikisi birlikte istenir. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+
+    <!-- Arka planda koşu takibi için foreground service. Android 14+ servis
+         tipini (location) hem izinle hem manifest'te bildirmeyi zorunlu kılar;
+         POST_NOTIFICATIONS ise Android 13+ kalıcı bildirim için gerekir. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="Treadom"
@@ -45,6 +58,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- flutter_foreground_task'in koşu takip servisi. location tipi arka
+             planda konum erişimi içindir; stopWithTask=true ile kullanıcı
+             uygulamayı kapatınca (swipe-kill) servis de durur. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="location"
+            android:exported="false"
+            android:stopWithTask="true" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

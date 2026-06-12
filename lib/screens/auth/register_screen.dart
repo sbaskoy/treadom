@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/app_snackbar.dart';
 import 'auth_error_messages.dart';
 
 /// Kullanıcı adı + şifre ile yeni hesap oluşturma ekranı.
@@ -47,8 +48,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizedAuthError(l10n, error))),
+      showAppSnackBar(
+        context,
+        localizedAuthError(l10n, error),
+        type: AppSnackBarType.error,
       );
       return;
     }

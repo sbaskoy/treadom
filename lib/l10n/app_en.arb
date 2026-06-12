@@ -42,6 +42,10 @@
   "themeSystem": "System default",
   "themeLight": "Light",
   "themeDark": "Dark",
+  "avatarLabel": "Avatar",
+  "@avatarLabel": {
+    "description": "Label for the avatar selector in settings."
+  },
 
   "loginTitle": "Sign In",
   "registerTitle": "Create Account",
@@ -101,5 +105,154 @@
   "locationPermissionDeniedMessage": "Treadom needs your location to work. Please grant the location permission.",
   "locationPermissionDeniedForeverMessage": "Location permission was permanently denied. You need to enable it from system settings.",
   "openSettingsButton": "Open Settings",
-  "retryButton": "Try Again"
+  "retryButton": "Try Again",
+
+  "startRunButton": "Start Running",
+  "@startRunButton": {
+    "description": "Button that starts tracking the user's run."
+  },
+  "stopRunButton": "Finish Run",
+  "newRunButton": "New Run",
+  "runDistanceLabel": "Distance",
+  "runAreaLabel": "Area",
+  "runFinishedTitle": "Run complete!",
+
+  "distanceMeters": "{meters} m",
+  "@distanceMeters": {
+    "placeholders": { "meters": { "type": "String" } }
+  },
+  "distanceKilometers": "{km} km",
+  "@distanceKilometers": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "areaSquareMeters": "{value} m²",
+  "@areaSquareMeters": {
+    "placeholders": { "value": { "type": "String" } }
+  },
+  "areaSquareKilometers": "{value} km²",
+  "@areaSquareKilometers": {
+    "placeholders": { "value": { "type": "String" } }
+  },
+
+  "runElapsedLabel": "Time",
+  "runPaceLabel": "Pace",
+  "runCaloriesLabel": "Calories",
+  "caloriesValue": "{value} kcal",
+  "@caloriesValue": {
+    "placeholders": { "value": { "type": "String" } }
+  },
+  "paceSuffix": "/km",
+  "unitKilometers": "km",
+  "unitMeters": "m",
+  "unitKcal": "kcal",
+
+  "runOngoingTitle": "Run in progress",
+  "@runOngoingTitle": {
+    "description": "Title of the ongoing run notification."
+  },
+  "notificationChannelName": "Run tracking",
+
+  "weightLabel": "Weight",
+  "weightValue": "{value} kg",
+  "@weightValue": {
+    "placeholders": { "value": { "type": "String" } }
+  },
+
+  "claimTitle": "Name your land",
+  "@claimTitle": {
+    "description": "Title of the dialog shown after closing a loop to name the new territory."
+  },
+  "claimMessage": "You enclosed an area of {area}. Give it a name, or leave it blank to use your username.",
+  "@claimMessage": {
+    "placeholders": { "area": { "type": "String" } }
+  },
+  "territoryNameLabel": "Land name",
+  "landNameHint": "Shown on all of your land",
+  "saveButton": "Save",
+  "landNameUpdated": "Land name updated",
+  "claimButton": "Claim Land",
+  "claimedSnack": "You claimed \"{name}\"!",
+  "@claimedSnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "landsConquered": "{count, plural, =1{1 enemy land conquered!} other{{count} enemy lands conquered!}}",
+  "@landsConquered": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "runSavedSnack": "Run saved to your history.",
+  "loopNotClosedHint": "No land taken — close the loop by returning to your start point (or back into your own land).",
+  "loopTooShortHint": "No land taken — go a bit farther, then loop back to close it.",
+
+  "historyTitle": "Walking History",
+  "historyTooltip": "Walking history",
+  "historyEmptyTitle": "No runs yet",
+  "historyEmptyMessage": "Start running to fill your history with routes and conquered lands.",
+  "historyClaimedBadge": "Land claimed",
+  "historyConqueredBadge": "{count, plural, =1{1 conquered} other{{count} conquered}}",
+  "@historyConqueredBadge": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "territoryOwnerLabel": "{username}'s land",
+  "@territoryOwnerLabel": {
+    "placeholders": { "username": { "type": "String" } }
+  },
+  "territoryYoursLabel": "Your land",
+  "territoryClaimedLabel": "Claimed",
+  "territoryConqueredFromLabel": "Conquered from {username}",
+  "@territoryConqueredFromLabel": {
+    "placeholders": { "username": { "type": "String" } }
+  },
+
+  "leaderboardTitle": "Leaderboard",
+  "leaderboardTooltip": "Leaderboard",
+  "leaderboardYou": "You",
+  "leaderboardEmpty": "No lands claimed yet. Be the first!",
+  "leaderboardNoRank": "Claim a land to enter the ranking.",
+  "leaderboardCount": "{count, plural, =1{1 land} other{{count} lands}}",
+  "@leaderboardCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "howToPlayLabel": "How to play",
+  "onboardingTitle1": "Walk to claim land",
+  "onboardingBody1": "Start a run and walk a closed loop. The area you circle becomes your land.",
+  "onboardingTitle2": "Encircle to conquer",
+  "onboardingBody2": "Run around a rival's land to take it. Fully surround it to take all of it; cross only part and you take just that piece.",
+  "onboardingTitle3": "Rule the map",
+  "onboardingBody3": "Climb the leaderboard, name your land from settings, and find players near you.",
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingStart": "Start",
+
+  "profileTitle": "Profile",
+  "profileTooltip": "Profile",
+  "profileRankLabel": "Rank",
+  "profileLandsLabel": "Lands",
+  "profileRunsLabel": "Runs",
+  "profileConquestsLabel": "Conquests",
+  "profileUnranked": "Unranked",
+
+  "chatTitle": "Messages",
+  "chatTooltip": "Messages",
+  "chatNearbyTitle": "Nearby players",
+  "chatNearbyEmpty": "No players nearby right now.",
+  "chatNoLocation": "Waiting for your location…",
+  "chatEmptyTitle": "No conversations yet",
+  "chatEmptyMessage": "Find nearby players and start chatting.",
+  "chatMessageHint": "Message",
+  "chatEnded": "This chat has ended.",
+  "chatEndChat": "End chat",
+  "chatEndConfirmTitle": "End chat?",
+  "chatEndConfirmMessage": "Neither of you will be able to message again.",
+  "chatAway": "{dist} away",
+  "@chatAway": { "placeholders": { "dist": { "type": "String" } } },
+  "cancelButton": "Cancel",
+
+  "searchHint": "Search players by username",
+  "searchNoResults": "No player found",
+  "searchNoTerritory": "{username} has no land yet",
+  "@searchNoTerritory": {
+    "placeholders": { "username": { "type": "String" } }
+  }
 }

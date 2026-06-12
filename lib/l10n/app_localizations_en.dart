@@ -45,6 +45,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeDark => 'Dark';
 
   @override
+  String get avatarLabel => 'Avatar';
+
+  @override
   String get loginTitle => 'Sign In';
 
   @override
@@ -159,4 +162,311 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get retryButton => 'Try Again';
+
+  @override
+  String get startRunButton => 'Start Running';
+
+  @override
+  String get stopRunButton => 'Finish Run';
+
+  @override
+  String get newRunButton => 'New Run';
+
+  @override
+  String get runDistanceLabel => 'Distance';
+
+  @override
+  String get runAreaLabel => 'Area';
+
+  @override
+  String get runFinishedTitle => 'Run complete!';
+
+  @override
+  String distanceMeters(String meters) {
+    return '$meters m';
+  }
+
+  @override
+  String distanceKilometers(String km) {
+    return '$km km';
+  }
+
+  @override
+  String areaSquareMeters(String value) {
+    return '$value m²';
+  }
+
+  @override
+  String areaSquareKilometers(String value) {
+    return '$value km²';
+  }
+
+  @override
+  String get runElapsedLabel => 'Time';
+
+  @override
+  String get runPaceLabel => 'Pace';
+
+  @override
+  String get runCaloriesLabel => 'Calories';
+
+  @override
+  String caloriesValue(String value) {
+    return '$value kcal';
+  }
+
+  @override
+  String get paceSuffix => '/km';
+
+  @override
+  String get unitKilometers => 'km';
+
+  @override
+  String get unitMeters => 'm';
+
+  @override
+  String get unitKcal => 'kcal';
+
+  @override
+  String get runOngoingTitle => 'Run in progress';
+
+  @override
+  String get notificationChannelName => 'Run tracking';
+
+  @override
+  String get weightLabel => 'Weight';
+
+  @override
+  String weightValue(String value) {
+    return '$value kg';
+  }
+
+  @override
+  String get claimTitle => 'Name your land';
+
+  @override
+  String claimMessage(String area) {
+    return 'You enclosed an area of $area. Give it a name, or leave it blank to use your username.';
+  }
+
+  @override
+  String get territoryNameLabel => 'Land name';
+
+  @override
+  String get landNameHint => 'Shown on all of your land';
+
+  @override
+  String get saveButton => 'Save';
+
+  @override
+  String get landNameUpdated => 'Land name updated';
+
+  @override
+  String get claimButton => 'Claim Land';
+
+  @override
+  String claimedSnack(String name) {
+    return 'You claimed \"$name\"!';
+  }
+
+  @override
+  String landsConquered(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count enemy lands conquered!',
+      one: '1 enemy land conquered!',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get runSavedSnack => 'Run saved to your history.';
+
+  @override
+  String get loopNotClosedHint =>
+      'No land taken — close the loop by returning to your start point (or back into your own land).';
+
+  @override
+  String get loopTooShortHint =>
+      'No land taken — go a bit farther, then loop back to close it.';
+
+  @override
+  String get historyTitle => 'Walking History';
+
+  @override
+  String get historyTooltip => 'Walking history';
+
+  @override
+  String get historyEmptyTitle => 'No runs yet';
+
+  @override
+  String get historyEmptyMessage =>
+      'Start running to fill your history with routes and conquered lands.';
+
+  @override
+  String get historyClaimedBadge => 'Land claimed';
+
+  @override
+  String historyConqueredBadge(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count conquered',
+      one: '1 conquered',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String territoryOwnerLabel(String username) {
+    return '$username\'s land';
+  }
+
+  @override
+  String get territoryYoursLabel => 'Your land';
+
+  @override
+  String get territoryClaimedLabel => 'Claimed';
+
+  @override
+  String territoryConqueredFromLabel(String username) {
+    return 'Conquered from $username';
+  }
+
+  @override
+  String get leaderboardTitle => 'Leaderboard';
+
+  @override
+  String get leaderboardTooltip => 'Leaderboard';
+
+  @override
+  String get leaderboardYou => 'You';
+
+  @override
+  String get leaderboardEmpty => 'No lands claimed yet. Be the first!';
+
+  @override
+  String get leaderboardNoRank => 'Claim a land to enter the ranking.';
+
+  @override
+  String leaderboardCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lands',
+      one: '1 land',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get howToPlayLabel => 'How to play';
+
+  @override
+  String get onboardingTitle1 => 'Walk to claim land';
+
+  @override
+  String get onboardingBody1 =>
+      'Start a run and walk a closed loop. The area you circle becomes your land.';
+
+  @override
+  String get onboardingTitle2 => 'Encircle to conquer';
+
+  @override
+  String get onboardingBody2 =>
+      'Run around a rival\'s land to take it. Fully surround it to take all of it; cross only part and you take just that piece.';
+
+  @override
+  String get onboardingTitle3 => 'Rule the map';
+
+  @override
+  String get onboardingBody3 =>
+      'Climb the leaderboard, name your land from settings, and find players near you.';
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingStart => 'Start';
+
+  @override
+  String get profileTitle => 'Profile';
+
+  @override
+  String get profileTooltip => 'Profile';
+
+  @override
+  String get profileRankLabel => 'Rank';
+
+  @override
+  String get profileLandsLabel => 'Lands';
+
+  @override
+  String get profileRunsLabel => 'Runs';
+
+  @override
+  String get profileConquestsLabel => 'Conquests';
+
+  @override
+  String get profileUnranked => 'Unranked';
+
+  @override
+  String get chatTitle => 'Messages';
+
+  @override
+  String get chatTooltip => 'Messages';
+
+  @override
+  String get chatNearbyTitle => 'Nearby players';
+
+  @override
+  String get chatNearbyEmpty => 'No players nearby right now.';
+
+  @override
+  String get chatNoLocation => 'Waiting for your location…';
+
+  @override
+  String get chatEmptyTitle => 'No conversations yet';
+
+  @override
+  String get chatEmptyMessage => 'Find nearby players and start chatting.';
+
+  @override
+  String get chatMessageHint => 'Message';
+
+  @override
+  String get chatEnded => 'This chat has ended.';
+
+  @override
+  String get chatEndChat => 'End chat';
+
+  @override
+  String get chatEndConfirmTitle => 'End chat?';
+
+  @override
+  String get chatEndConfirmMessage =>
+      'Neither of you will be able to message again.';
+
+  @override
+  String chatAway(String dist) {
+    return '$dist away';
+  }
+
+  @override
+  String get cancelButton => 'Cancel';
+
+  @override
+  String get searchHint => 'Search players by username';
+
+  @override
+  String get searchNoResults => 'No player found';
+
+  @override
+  String searchNoTerritory(String username) {
+    return '$username has no land yet';
+  }
 }

@@ -1,0 +1,14 @@
+{
+  "name": "treadom-functions",
+  "description": "Treadom Cloud Functions — sunucu tarafı fetih (territory conquest)",
+  "engines": {
+    "node": "18"
+  },
+  "main": "index.js",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.0",
+    "polygon-clipping": "^0.15.7"
+  }
+}

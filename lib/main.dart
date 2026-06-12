@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,10 +9,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
+import 'providers/avatar_provider.dart';
+import 'providers/chat_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/location_provider.dart';
+import 'providers/run_provider.dart';
+import 'providers/territory_provider.dart';
 import 'providers/theme_provider.dart';
-import 'screens/auth/auth_gate.dart';
+import 'providers/weight_provider.dart';
+import 'screens/root_screen.dart';
+import 'services/foreground_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -18,23 +26,47 @@ Future<void> main() async {
   // Flutter bağlamının hazır olduğundan emin oluyoruz.
   WidgetsFlutterBinding.ensureInitialized();
 
+  // İçeriğin (özellikle haritanın) durum ve gezinme çubuklarının arkasına da
+  // çizilerek gerçek anlamda tam ekran görünmesi için edge-to-edge moduna
+  // geçiyoruz ve sistem çubuklarını şeffaf yapıyoruz.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+    ),
+  );
+
   // Firebase'i platforma uygun yapılandırmayla başlat. flutterfire configure
   // tarafından üretilen DefaultFirebaseOptions kullanılır.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Arka plan görev izolatı ile ana izolat arasındaki veri kanalını açıyoruz
+  // (koşu noktalarının haritaya akması bununla çalışır). Web'de no-op.
+  FlutterForegroundTask.initCommunicationPort();
+
   // Kaydedilmiş dil/tema tercihlerini ilk kareden önce yükleyebilmek için
   // SharedPreferences'i baştan açıyoruz (böylece açılışta titreme olmaz).
   final prefs = await SharedPreferences.getInstance();
+
+  final foregroundService = ForegroundService();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LocaleProvider(prefs)),
         ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
+        ChangeNotifierProvider(create: (_) => AvatarProvider(prefs)),
+        ChangeNotifierProvider(create: (_) => WeightProvider(prefs)),
         Provider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(
+          create: (_) => RunProvider(foregroundService: foregroundService),
+        ),
+        ChangeNotifierProvider(create: (_) => TerritoryProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: const TreadomApp(),
     ),
@@ -72,7 +104,9 @@ class TreadomApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
 
-      home: const AuthGate(),
+      // WithForegroundTask: koşu servisi çalışırken geri tuşu uygulamayı
+      // kapatmak yerine arka plana alır (servis ve takip sürer).
+      home: const WithForegroundTask(child: RootScreen()),
     );
   }
 }

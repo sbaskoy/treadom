@@ -46,6 +46,10 @@ dependencies:
   intl: ^0.20.2
   flutter_localizations:
     sdk: flutter
+  flutter_foreground_task: ^9.2.2
+  clipper2: ^0.0.3
+  google_fonts: ^6.2.1
+  confetti: ^0.8.0
 
 dev_dependencies:
   flutter_test:
@@ -57,6 +61,25 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
+# Uygulama ikonu (Android + iOS) — koyu lacivert pusula.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/icon_master.png"
+  adaptive_icon_background: "#161E42"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+
+# Açılış (splash) ekranı — koyu lacivert zemin, ortada pusula.
+flutter_native_splash:
+  color: "#161E42"
+  image: assets/icon/splash_logo.png
+  android_12:
+    color: "#161E42"
+    image: assets/icon/splash_logo.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
