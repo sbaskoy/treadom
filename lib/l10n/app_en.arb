@@ -1,0 +1,105 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Treadom",
+  "@appTitle": {
+    "description": "The application name, shown in the title bar and home screen."
+  },
+
+  "appTagline": "Walk. Conquer. Rule the map.",
+  "@appTagline": {
+    "description": "Short marketing tagline describing the game."
+  },
+
+  "welcomeMessage": "Welcome to Treadom!",
+  "@welcomeMessage": {
+    "description": "Greeting shown on the home placeholder screen."
+  },
+
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of the settings screen."
+  },
+
+  "languageLabel": "Language",
+  "@languageLabel": {
+    "description": "Label for the language selector."
+  },
+
+  "languageSystem": "System default",
+  "@languageSystem": {
+    "description": "Option to follow the device language."
+  },
+
+  "languageTurkish": "Türkçe",
+  "languageEnglish": "English",
+
+  "themeLabel": "Theme",
+  "@themeLabel": {
+    "description": "Label for the theme selector."
+  },
+
+  "themeSystem": "System default",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+
+  "loginTitle": "Sign In",
+  "registerTitle": "Create Account",
+  "usernameLabel": "Username",
+  "passwordLabel": "Password",
+  "confirmPasswordLabel": "Confirm Password",
+  "signInButton": "Sign In",
+  "signUpButton": "Sign Up",
+  "signOutButton": "Sign Out",
+
+  "noAccountPrompt": "Don't have an account?",
+  "haveAccountPrompt": "Already have an account?",
+  "goToRegister": "Sign Up",
+  "goToLogin": "Sign In",
+
+  "validationUsernameRequired": "Please enter a username",
+  "validationUsernameTooShort": "Username must be at least 3 characters",
+  "validationUsernameInvalid": "Use only letters, numbers and underscore",
+  "validationPasswordRequired": "Please enter a password",
+  "validationPasswordTooShort": "Password must be at least 6 characters",
+  "validationPasswordMismatch": "Passwords do not match",
+
+  "authErrorUserNotFound": "No account found with this username",
+  "authErrorWrongPassword": "Incorrect password",
+  "authErrorInvalidCredentials": "Username or password is incorrect",
+  "authErrorUsernameTaken": "This username is already taken",
+  "authErrorWeakPassword": "Password is too weak",
+  "authErrorNetwork": "Network error. Check your connection",
+  "authErrorGeneric": "Something went wrong. Please try again",
+
+  "loggedInAs": "Signed in as {username}",
+  "@loggedInAs": {
+    "description": "Shown on the home screen with the current user's name.",
+    "placeholders": {
+      "username": { "type": "String" }
+    }
+  },
+
+  "mapTitle": "Map",
+  "@mapTitle": {
+    "description": "Title of the map screen shown in the app bar."
+  },
+
+  "recenterTooltip": "Center on my location",
+  "@recenterTooltip": {
+    "description": "Tooltip for the button that recenters the map on the user."
+  },
+
+  "locationLoading": "Getting your location…",
+  "@locationLoading": {
+    "description": "Shown while the first location fix is being acquired."
+  },
+
+  "locationServiceDisabledTitle": "Location is off",
+  "locationServiceDisabledMessage": "Turn on your device's location (GPS) service to see yourself on the map.",
+  "locationPermissionDeniedTitle": "Location permission needed",
+  "locationPermissionDeniedMessage": "Treadom needs your location to work. Please grant the location permission.",
+  "locationPermissionDeniedForeverMessage": "Location permission was permanently denied. You need to enable it from system settings.",
+  "openSettingsButton": "Open Settings",
+  "retryButton": "Try Again"
+}

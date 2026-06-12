@@ -1,0 +1,25 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "able-pottery-241209",
+          "appId": "1:308613082441:android:12d2a5aee05aad7c09fe98",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "able-pottery-241209",
+          "configurations": {
+            "android": "1:308613082441:android:12d2a5aee05aad7c09fe98",
+            "web": "1:308613082441:web:2e014a68ddec461009fe98"
+          }
+        }
+      }
+    }
+  }
+}

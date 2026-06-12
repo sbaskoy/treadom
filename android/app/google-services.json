@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "308613082441",
+    "project_id": "able-pottery-241209",
+    "storage_bucket": "able-pottery-241209.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:308613082441:android:12d2a5aee05aad7c09fe98",
+        "android_client_info": {
+          "package_name": "com.salimbaskoy.treadom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY27aQjBT9oriVbUIaKoZCDQeR1U3Xfgw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

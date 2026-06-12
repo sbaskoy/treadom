@@ -1,0 +1,8 @@
+# Flutter yerelleştirme (i18n) yapılandırması.
+# `flutter gen-l10n` bu ayarları kullanarak .arb dosyalarından Dart kodu üretir.
+
+arb-dir: lib/l10n                # Çeviri (.arb) dosyalarının bulunduğu klasör
+template-arb-file: app_en.arb    # Şablon dosya (anahtarların kaynağı)
+output-localization-file: app_localizations.dart  # Üretilen ana dosya
+output-class: AppLocalizations   # Üretilen sınıf adı
+nullable-getter: false           # AppLocalizations.of(context) null dönmesin

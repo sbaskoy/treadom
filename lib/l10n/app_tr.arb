@@ -1,0 +1,58 @@
+{
+  "@@locale": "tr",
+
+  "appTitle": "Treadom",
+  "appTagline": "Yürü. Fethet. Haritaya hükmet.",
+  "welcomeMessage": "Treadom'a hoş geldin!",
+  "settingsTitle": "Ayarlar",
+  "languageLabel": "Dil",
+  "languageSystem": "Sistem varsayılanı",
+  "languageTurkish": "Türkçe",
+  "languageEnglish": "English",
+  "themeLabel": "Tema",
+  "themeSystem": "Sistem varsayılanı",
+  "themeLight": "Açık",
+  "themeDark": "Koyu",
+
+  "loginTitle": "Giriş Yap",
+  "registerTitle": "Hesap Oluştur",
+  "usernameLabel": "Kullanıcı adı",
+  "passwordLabel": "Şifre",
+  "confirmPasswordLabel": "Şifre (tekrar)",
+  "signInButton": "Giriş Yap",
+  "signUpButton": "Kayıt Ol",
+  "signOutButton": "Çıkış Yap",
+
+  "noAccountPrompt": "Hesabın yok mu?",
+  "haveAccountPrompt": "Zaten hesabın var mı?",
+  "goToRegister": "Kayıt Ol",
+  "goToLogin": "Giriş Yap",
+
+  "validationUsernameRequired": "Lütfen bir kullanıcı adı gir",
+  "validationUsernameTooShort": "Kullanıcı adı en az 3 karakter olmalı",
+  "validationUsernameInvalid": "Yalnızca harf, rakam ve alt çizgi kullan",
+  "validationPasswordRequired": "Lütfen bir şifre gir",
+  "validationPasswordTooShort": "Şifre en az 6 karakter olmalı",
+  "validationPasswordMismatch": "Şifreler eşleşmiyor",
+
+  "authErrorUserNotFound": "Bu kullanıcı adıyla hesap bulunamadı",
+  "authErrorWrongPassword": "Şifre yanlış",
+  "authErrorInvalidCredentials": "Kullanıcı adı veya şifre hatalı",
+  "authErrorUsernameTaken": "Bu kullanıcı adı zaten alınmış",
+  "authErrorWeakPassword": "Şifre çok zayıf",
+  "authErrorNetwork": "Ağ hatası. Bağlantını kontrol et",
+  "authErrorGeneric": "Bir şeyler ters gitti. Lütfen tekrar dene",
+
+  "loggedInAs": "{username} olarak giriş yapıldı",
+
+  "mapTitle": "Harita",
+  "recenterTooltip": "Konumuma dön",
+  "locationLoading": "Konumun alınıyor…",
+  "locationServiceDisabledTitle": "Konum kapalı",
+  "locationServiceDisabledMessage": "Haritada konumunu görebilmek için cihazının konum (GPS) servisini aç.",
+  "locationPermissionDeniedTitle": "Konum izni gerekli",
+  "locationPermissionDeniedMessage": "Treadom çalışmak için konumuna ihtiyaç duyar. Lütfen konum iznini ver.",
+  "locationPermissionDeniedForeverMessage": "Konum izni kalıcı olarak reddedildi. İzni sistem ayarlarından açman gerekiyor.",
+  "openSettingsButton": "Ayarları Aç",
+  "retryButton": "Tekrar Dene"
+}

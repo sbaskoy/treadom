@@ -1,0 +1,20 @@
+rules_version = '2';
+
+// Treadom Firestore güvenlik kuralları.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Kullanıcı dökümanları: users/{uid}
+    match /users/{userId} {
+      // Giriş yapmış herkes kullanıcıları okuyabilir (sıralama ekranı için).
+      allow read: if request.auth != null;
+
+      // Kullanıcı yalnızca KENDİ dökümanını oluşturabilir/güncelleyebilir.
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId;
+
+      // Silmeye izin yok.
+      allow delete: if false;
+    }
+  }
+}
