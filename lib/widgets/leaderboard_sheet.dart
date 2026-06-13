@@ -275,8 +275,10 @@ class _SearchResults extends StatelessWidget {
               return _PlayerRow(
                 rank: null,
                 name: u.username,
-                areaM2: territory.areaOf(u.uid),
-                count: null,
+                // Denormalize toplam alan (kullanıcı dökümanından); tüm
+                // territories taranmaz.
+                areaM2: u.totalAreaM2,
+                count: u.territoryCount,
                 isMe: u.uid == territory.uid,
                 l10n: l10n,
                 onTap: () => onTap(u.uid, u.username),

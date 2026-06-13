@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
@@ -19,6 +20,7 @@ import 'providers/theme_provider.dart';
 import 'providers/weight_provider.dart';
 import 'screens/root_screen.dart';
 import 'services/foreground_service.dart';
+import 'services/push_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -42,6 +44,10 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Uygulama arka planda/kapalıyken gelen push bildirimleri için en üst seviye
+  // işleyiciyi kaydet (runApp'tan önce kayıtlı olmalı).
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   // Arka plan görev izolatı ile ana izolat arasındaki veri kanalını açıyoruz
   // (koşu noktalarının haritaya akması bununla çalışır). Web'de no-op.

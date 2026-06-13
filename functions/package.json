@@ -2,7 +2,7 @@
   "name": "treadom-functions",
   "description": "Treadom Cloud Functions — sunucu tarafı fetih (territory conquest)",
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "index.js",
   "private": true,

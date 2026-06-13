@@ -16,8 +16,13 @@ class AppUser {
   /// değiştirilir; boşsa [username] kullanılır.
   final String landName;
 
-  /// Şimdiye kadar fethedilen toplam alan (metrekare). Aşama 4+ ile dolacak.
+  /// Kullanıcının elindeki tüm alanların toplamı (metrekare). Sunucu
+  /// (`claimTerritory`/`backfillTerritories`) her fetihte günceller; liderlik
+  /// tablosu bu denormalize alandan okunur (tüm territories taranmaz).
   final double totalAreaM2;
+
+  /// Kullanıcının elindeki alan (territory) sayısı. Yine sunucu günceller.
+  final int territoryCount;
 
   /// Hesabın oluşturulma zamanı.
   final DateTime? createdAt;
@@ -27,6 +32,7 @@ class AppUser {
     required this.username,
     this.landName = '',
     this.totalAreaM2 = 0,
+    this.territoryCount = 0,
     this.createdAt,
   });
 
@@ -42,6 +48,7 @@ class AppUser {
       username: (data['username'] as String?) ?? '',
       landName: (data['landName'] as String?) ?? '',
       totalAreaM2: (data['totalAreaM2'] as num?)?.toDouble() ?? 0,
+      territoryCount: (data['territoryCount'] as num?)?.toInt() ?? 0,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
     );
   }
@@ -53,6 +60,7 @@ class AppUser {
       'username': username,
       'landName': landName,
       'totalAreaM2': totalAreaM2,
+      'territoryCount': territoryCount,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),

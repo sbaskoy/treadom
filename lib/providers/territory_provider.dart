@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../models/app_user.dart';
 import '../models/run_record.dart';
 import '../models/territory.dart';
 import '../services/firestore_service.dart';
@@ -28,60 +29,183 @@ class LeaderboardEntry {
   final int territoryCount;
 }
 
-/// Harita üzerindeki alanları (kendi + rakip) ve fethetme işlemini yöneten
-/// sağlayıcı.
+/// Harita üzerindeki alanları (kendi + görünür alan), sıralamayı ve fetih
+/// işlemini yöneten sağlayıcı.
 ///
-/// Oturum açan kullanıcıya [bind] ile bağlanır; o kullanıcının görünen adını
-/// yükler ve tüm alanların canlı akışına abone olur. Tur bitince [claim] ile
-/// yeni alan oluşturulur ve çakışan rakip alanlar fethedilir.
+/// ÖLÇEK: Artık tüm `territories` koleksiyonu indirilmez. Üç kaynak ayrı ayrı
+/// izlenir:
+///   - **Kendi alanlarım** (`myTerritoriesStream`): loop-closure geometrisi ve
+///     "kendi toprağım" için (viewport dışında bile gerekir).
+///   - **Görünür alan** (`territoriesInBounds`): haritada çizilecek rakip+kendi
+///     alanlar; harita kaydıkça [setViewport] ile güncellenir.
+///   - **Liderlik tablosu** (`topUsersStream`): denormalize `users.totalAreaM2`
+///     üzerinden; tüm alanlar taranmaz.
 class TerritoryProvider extends ChangeNotifier {
   TerritoryProvider({FirestoreService? firestore})
       : _fs = firestore ?? FirestoreService();
 
   final FirestoreService _fs;
 
-  StreamSubscription<List<Territory>>? _sub;
+  StreamSubscription<AppUser?>? _meSub;
+  StreamSubscription<List<Territory>>? _mySub;
+  StreamSubscription<List<Territory>>? _viewSub;
+  StreamSubscription<List<AppUser>>? _lbSub;
 
   String? _uid;
   String _username = '';
   String _landName = '';
 
+  List<Territory> _myTerritories = const [];
+  List<Territory> _viewTerritories = const [];
+  List<LeaderboardEntry> _leaderboard = const [];
+  LeaderboardEntry? _myEntry;
+  int? _myRank;
+
+  // Viewport sorgusu için debounce + son uygulanan kutu (gereksiz yeniden
+  // aboneliği önlemek için).
+  Timer? _viewDebounce;
+  _Bounds? _lastViewBounds;
+
   /// Şu an bağlı kullanıcının görünen adı (alan adı boş bırakılınca kullanılır).
   String get username => _username;
 
-  /// Kullanıcının tek alan adı (boşsa kullanıcı adına düşer). Tüm alanlarında
-  /// bu görünür; Ayarlar'dan değiştirilir.
+  /// Kullanıcının tek alan adı (boşsa kullanıcı adına düşer).
   String get landName =>
       _landName.trim().isEmpty ? _username : _landName.trim();
 
   /// Bağlı kullanıcının kimliği.
   String? get uid => _uid;
 
-  List<Territory> _territories = const [];
+  /// Haritada çizilecek alanlar: görünür alan ∪ kendi alanlarım (kimliğe göre
+  /// tekilleştirilir; böylece kendi toprağım viewport dışındayken de görünür).
+  List<Territory> get territories {
+    final byId = <String, Territory>{};
+    for (final t in _viewTerritories) {
+      byId[t.id] = t;
+    }
+    for (final t in _myTerritories) {
+      byId[t.id] = t;
+    }
+    return byId.values.toList();
+  }
 
-  /// Haritada çizilecek tüm alanlar (kendi + rakip).
-  List<Territory> get territories => _territories;
+  /// Liderlik tablosu (denormalize toplamlara göre, azalan).
+  List<LeaderboardEntry> get leaderboard => _leaderboard;
 
-  /// Sağlayıcıyı oturum açan kullanıcıya bağlar. Kullanıcı değişmediyse
-  /// (aynı uid) tekrar abone olmaz.
+  /// Bağlı kullanıcının sıralamadaki yeri (1 tabanlı); hiç alanı yoksa null.
+  int? get myRank => _myRank;
+
+  /// Bağlı kullanıcının sıralama satırı; hiç alanı yoksa null.
+  LeaderboardEntry? get myEntry => _myEntry;
+
+  /// Sağlayıcıyı oturum açan kullanıcıya bağlar.
   Future<void> bind(String uid) async {
     if (_uid == uid) return;
     _uid = uid;
 
+    // Anlık kullanım için adı/landName'i bir kez yükle; akış ayrıca canlı tutar.
     final user = await _fs.getUser(uid);
     _username = user?.username ?? '';
     _landName = user?.landName ?? '';
 
-    await _sub?.cancel();
-    _sub = _fs.territoriesStream().listen((list) {
-      _territories = list;
+    await _meSub?.cancel();
+    _meSub = _fs.userStream(uid).listen((u) {
+      if (u == null) return;
+      _username = u.username;
+      _landName = u.landName;
+      _myEntry = u.totalAreaM2 > 0
+          ? LeaderboardEntry(
+              uid: uid,
+              username: u.username,
+              areaM2: u.totalAreaM2,
+              territoryCount: u.territoryCount,
+            )
+          : null;
+      _refreshMyRank();
       notifyListeners();
     });
+
+    await _mySub?.cancel();
+    _mySub = _fs.myTerritoriesStream(uid).listen((list) {
+      _myTerritories = list;
+      notifyListeners();
+    });
+
+    await _lbSub?.cancel();
+    _lbSub = _fs.topUsersStream().listen((users) {
+      _leaderboard = [
+        for (final u in users)
+          if (u.totalAreaM2 > 0)
+            LeaderboardEntry(
+              uid: u.uid,
+              username: u.username,
+              areaM2: u.totalAreaM2,
+              territoryCount: u.territoryCount,
+            ),
+      ];
+      notifyListeners();
+    });
+
     notifyListeners();
   }
 
-  /// Kullanıcının tek alan adını değiştirir (Ayarlar'dan). Mevcut tüm alanlarının
-  /// etiketi de güncellenir.
+  /// Bağlı kullanıcının sıralamasını (kendinden daha büyük alanı olanların
+  /// sayısı + 1) agregasyon sorgusuyla tazeler. Alanı yoksa null.
+  Future<void> _refreshMyRank() async {
+    final area = _myEntry?.areaM2 ?? 0;
+    if (area <= 0) {
+      _myRank = null;
+      return;
+    }
+    try {
+      final above = await _fs.usersAboveArea(area);
+      _myRank = above + 1;
+      notifyListeners();
+    } catch (_) {
+      // Sıra hesaplanamazsa göstergeyi bozma.
+    }
+  }
+
+  /// Harita görünür alanını (viewport) ayarlar; alanları o kutuya sınırlar.
+  /// Hızlı kaydırmalarda gereksiz sorguyu önlemek için debounce uygulanır ve
+  /// kutu, kenar alanları da yakalamak için biraz genişletilir.
+  void setViewport({
+    required double minLat,
+    required double maxLat,
+    required double minLng,
+    required double maxLng,
+  }) {
+    // ~%30 marj (kenardaki ve merkezi kutu dışına taşan alanlar için).
+    final latPad = (maxLat - minLat) * 0.3;
+    final lngPad = (maxLng - minLng) * 0.3;
+    final b = _Bounds(
+      minLat - latPad,
+      maxLat + latPad,
+      minLng - lngPad,
+      maxLng + lngPad,
+    );
+    if (_lastViewBounds != null && _lastViewBounds!.approxEquals(b)) return;
+
+    _viewDebounce?.cancel();
+    _viewDebounce = Timer(const Duration(milliseconds: 350), () {
+      _lastViewBounds = b;
+      _viewSub?.cancel();
+      _viewSub = _fs
+          .territoriesInBounds(
+            minLat: b.minLat,
+            maxLat: b.maxLat,
+            minLng: b.minLng,
+            maxLng: b.maxLng,
+          )
+          .listen((list) {
+        _viewTerritories = list;
+        notifyListeners();
+      });
+    });
+  }
+
+  /// Kullanıcının tek alan adını değiştirir (Ayarlar'dan); sunucu mevcut tüm
+  /// alanlarının etiketini de günceller.
   Future<void> setLandName(String name) async {
     final uid = _uid;
     if (uid == null) return;
@@ -93,88 +217,29 @@ class TerritoryProvider extends ChangeNotifier {
   /// Bir alanın bağlı kullanıcıya ait olup olmadığını döner.
   bool isMine(Territory t) => t.ownerUid == _uid;
 
-  /// Tüm kullanıcıların toplam alanına göre azalan sıralaması.
-  ///
-  /// Denormalize bir toplam tutmak yerine her seferinde alan akışından
-  /// hesaplanır; böylece fetihle sahiplik değişince sıralama her zaman
-  /// tutarlıdır.
-  List<LeaderboardEntry> get leaderboard {
-    final areaByUid = <String, double>{};
-    final countByUid = <String, int>{};
-    final nameByUid = <String, String>{};
-    for (final t in _territories) {
-      areaByUid[t.ownerUid] = (areaByUid[t.ownerUid] ?? 0) + t.areaM2;
-      countByUid[t.ownerUid] = (countByUid[t.ownerUid] ?? 0) + 1;
-      nameByUid[t.ownerUid] = t.ownerUsername;
-    }
-    final entries = areaByUid.keys
-        .map((uid) => LeaderboardEntry(
-              uid: uid,
-              username: nameByUid[uid] ?? '',
-              areaM2: areaByUid[uid] ?? 0,
-              territoryCount: countByUid[uid] ?? 0,
-            ))
-        .toList();
-    entries.sort((a, b) => b.areaM2.compareTo(a.areaM2));
-    return entries;
+  /// Belirli bir kullanıcının alanlarının köşe noktalarını (haritayı o
+  /// kullanıcının topraklarına odaklamak için) tek seferlik getirir.
+  Future<List<LatLng>> pointsOf(String uid) async {
+    final list = await _fs.territoriesOf(uid);
+    return [for (final t in list) ...t.points];
   }
-
-  /// Bağlı kullanıcının sıralamadaki yeri (1 tabanlı); hiç alanı yoksa null.
-  int? get myRank {
-    final lb = leaderboard;
-    for (var i = 0; i < lb.length; i++) {
-      if (lb[i].uid == _uid) return i + 1;
-    }
-    return null;
-  }
-
-  /// Bağlı kullanıcının sıralama satırı; hiç alanı yoksa null.
-  LeaderboardEntry? get myEntry {
-    for (final e in leaderboard) {
-      if (e.uid == _uid) return e;
-    }
-    return null;
-  }
-
-  /// Belirli bir kullanıcıya ait tüm alanların köşe noktaları (haritayı o
-  /// kullanıcının topraklarına odaklamak için).
-  List<LatLng> territoryPointsOf(String uid) => [
-        for (final t in _territories)
-          if (t.ownerUid == uid) ...t.points,
-      ];
-
-  /// Belirli bir kullanıcının elindeki toplam alan (metrekare).
-  double areaOf(String uid) {
-    var sum = 0.0;
-    for (final t in _territories) {
-      if (t.ownerUid == uid) sum += t.areaM2;
-    }
-    return sum;
-  }
-
-  /// Belirli bir kullanıcının haritada gösterilebilir (en az bir) alanı var mı?
-  bool hasTerritory(String uid) =>
-      _territories.any((t) => t.ownerUid == uid && t.points.length >= 3);
 
   /// Bağlı kullanıcının kendi alanlarının geometrisi (halka kapanma kontrolü
-  /// için: koşu kendi alanından çıkıp kendi alanına dönerek de tamamlanabilir).
+  /// için).
   List<TerritoryShape> get ownShapes => [
-        for (final t in _territories)
-          if (t.ownerUid == _uid && t.points.length >= 3)
+        for (final t in _myTerritories)
+          if (t.points.length >= 3)
             TerritoryShape(outer: t.points, holes: t.holes),
       ];
 
   /// Verilen koşu izinin fethedilebilir bir kapalı halka oluşturup
-  /// oluşturmadığını döner. Hem koşu özeti (UI) hem de [claim] aynı kararı
-  /// kullanır; böylece "alan aldın mı" göstergesi her zaman tutarlıdır.
+  /// oluşturmadığını döner.
   LoopResult checkLoop(List<LatLng> route) =>
       validateRunLoop(route: route, ownShapes: ownShapes);
 
   /// Tamamlanan turu kaydeder: yürüme geçmişine yazar ve döngü kapandıysa
-  /// (alan oluştuysa) yeni alanı oluşturup çakışan rakip alanları fetheder.
-  ///
-  /// Alan adı kullanıcının tek [landName]'idir (her koşuda sorulmaz; Ayarlardan
-  /// değiştirilir). Döngü kapanmadıysa yalnızca geçmişe kaydedilir, null döner.
+  /// (alan oluştuysa) sunucuda yeni alanı oluşturup çakışan rakip alanları
+  /// fetheder.
   Future<ClaimOutcome?> claim({
     required List<LatLng> route,
     required double areaM2,
@@ -184,9 +249,6 @@ class TerritoryProvider extends ChangeNotifier {
     final uid = _uid;
     if (uid == null) return null;
 
-    // Yalnızca kapanmış bir halka alan oluşturur. Halka kapanmadıysa (başlangıca
-    // ya da kendi alanına dönülmediyse) hiçbir yer fethedilmez; tur yine de
-    // geçmişe yazılır.
     final loop = checkLoop(route);
     final polygon = loop.polygon;
     final canClaim = loop.valid && polygon.length >= 3;
@@ -222,7 +284,31 @@ class TerritoryProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _viewDebounce?.cancel();
+    _meSub?.cancel();
+    _mySub?.cancel();
+    _viewSub?.cancel();
+    _lbSub?.cancel();
     super.dispose();
+  }
+}
+
+/// Viewport sorgusu için basit bir enlem/boylam sınır kutusu.
+class _Bounds {
+  const _Bounds(this.minLat, this.maxLat, this.minLng, this.maxLng);
+
+  final double minLat;
+  final double maxLat;
+  final double minLng;
+  final double maxLng;
+
+  /// İki kutu, küçük bir toleransla (yaklaşık ~birkaç metre) aynı mı? Aynıysa
+  /// yeniden sorgu açmayız.
+  bool approxEquals(_Bounds o) {
+    const eps = 0.0005; // ~50 m
+    return (minLat - o.minLat).abs() < eps &&
+        (maxLat - o.maxLat).abs() < eps &&
+        (minLng - o.minLng).abs() < eps &&
+        (maxLng - o.maxLng).abs() < eps;
   }
 }

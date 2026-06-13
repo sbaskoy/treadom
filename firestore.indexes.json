@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lastLat", "order": "ASCENDING" },
+        { "fieldPath": "lastLng", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "territories",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "centroidLat", "order": "ASCENDING" },
+        { "fieldPath": "centroidLng", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

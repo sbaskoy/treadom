@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Treadom için test kullanıcıları ve başlangıç alanlarını (territories) Firebase
-REST API'leriyle oluşturur.
+"""Treadom için test kullanıcıları ve başlangıç alanlarını (territories) oluşturur.
 
 Amaç: emülatörde fetih senaryosunu canlı denemek için sahneyi hazırlamak.
   - ayse   -> Rota 1 (Merkez Kare)      "Ayşe Bahçesi"
   - mehmet -> Rota 2 (Doğu Komşu)       "Mehmet Tarlası"
   - zeynep -> Rota 3 (Kuzey Komşu)      "Zeynep Korusu"
   - fatih  -> (alan yok) — uygulamada Rota 5'i koşup ayse+mehmet'i FETHEDECEK.
+
+NOT (2026-06-13): `territories` koleksiyonu artık istemciye SALT-OKUNUR
+(firestore.rules). Bu yüzden alanlar doğrudan yazılamaz; her kullanıcının
+oturum token'ıyla `claimTerritory` Cloud Function'ı çağrılır (sunucu alanı
+centroid + denormalize toplamlarla oluşturur). Aynı scripti tekrar çalıştırmak
+güvenlidir: aynı kareyi yeniden talep etmek kişinin kendi alanıyla birleşir
+(çoğaltmaz). Tüm alanları SIFIRLAMAK için Firebase konsolundan silmek gerekir
+(istemci silemez).
 
 Tüm kullanıcıların şifresi: test1234
 Çalıştır: python3 tool/seed_test_data.py
@@ -28,6 +35,8 @@ UNIT = 0.0009
 IDTK = "https://identitytoolkit.googleapis.com/v1/accounts"
 FS = (f"https://firestore.googleapis.com/v1/projects/{PROJECT}"
       "/databases/(default)/documents")
+# Callable Cloud Functions (claimTerritory) bölgesi.
+FUNCTIONS = f"https://us-central1-{PROJECT}.cloudfunctions.net"
 
 
 def grid_to_latlon(gx, gy):
@@ -87,32 +96,30 @@ def ensure_user(username):
     return res["localId"], res["idToken"]
 
 
-def write_user_doc(uid, username, token, total_area):
+def write_user_doc(uid, username, token):
+    """Kullanıcı dökümanını yazar. username, claimTerritory'nin alan adını
+    türetmesi için gereklidir; totalAreaM2/territoryCount'ı SUNUCU hesaplar."""
     body = {"fields": {
         "username": {"stringValue": username},
-        "totalAreaM2": {"doubleValue": total_area},
+        "landName": {"stringValue": username},
         "createdAt": {"timestampValue": "2026-06-12T15:00:00Z"},
     }}
     patch(f"{FS}/users/{uid}?key={API_KEY}", body, token)
 
 
-def write_territory(uid, username, name, corners, token):
+def claim_territory(name, corners, token):
+    """`claimTerritory` callable'ını kullanıcının token'ıyla çağırır; sunucu
+    alanı (centroid + denormalize toplamlarla) oluşturur. Bitişik kareler
+    çakışmadığından fetih tetiklenmez."""
     pts = [grid_to_latlon(gx, gy) for (gx, gy) in corners]
     area = planar_area_m2(pts)
-    geo_values = [{"geoPointValue": {"latitude": lat, "longitude": lon}}
-                  for (lat, lon) in pts]
-    body = {"fields": {
-        "ownerUid": {"stringValue": uid},
-        "ownerUsername": {"stringValue": username},
-        "name": {"stringValue": name},
-        "points": {"arrayValue": {"values": geo_values}},
-        "areaM2": {"doubleValue": area},
-        "createdAt": {"timestampValue": "2026-06-12T15:00:00Z"},
-        "previousOwnerUsername": {"nullValue": None},
+    body = {"data": {
+        "name": name,
+        "points": [{"lat": lat, "lng": lon} for (lat, lon) in pts],
     }}
-    res = post(f"{FS}/territories?key={API_KEY}", body, token)
+    res = post(f"{FUNCTIONS}/claimTerritory", body, token)
     if "_error" in res:
-        raise RuntimeError(f"territory {name}: {res['_error']}")
+        raise RuntimeError(f"claim {name}: {res['_error']}")
     return area
 
 
@@ -124,39 +131,21 @@ SEED = {
 }
 
 
-def delete_all_territories(token):
-    """Mevcut tüm alanları siler (temiz bir demo için). Gevşetilmiş kurallar
-    sayesinde giriş yapmış kullanıcı silebilir."""
-    url = f"{FS}/territories?key={API_KEY}&pageSize=300"
-    req = urllib.request.Request(url)
-    req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req) as r:
-        data = json.loads(r.read())
-    docs = data.get("documents", [])
-    for d in docs:
-        name = d["name"]  # tam kaynak yolu
-        del_url = (f"https://firestore.googleapis.com/v1/{name}"
-                   f"?key={API_KEY}")
-        dreq = urllib.request.Request(del_url, method="DELETE")
-        dreq.add_header("Authorization", f"Bearer {token}")
-        urllib.request.urlopen(dreq).read()
-    print(f"✔ {len(docs)} mevcut alan silindi (temiz başlangıç)")
-
-
 def main():
     if "--reset" in sys.argv:
-        _, token = ensure_user("fatih")
-        delete_all_territories(token)
+        print("⚠ --reset artık desteklenmiyor: territories istemciye salt-okunur. "
+              "Tüm alanları silmek için Firebase konsolunu kullan.\n")
 
     for username, (name, corners) in SEED.items():
         uid, token = ensure_user(username)
-        area = write_territory(uid, username, name, corners, token)
-        write_user_doc(uid, username, token, area)
+        # Kullanıcı dökümanı, claimTerritory username'i okuyabilsin diye ÖNCE yazılır.
+        write_user_doc(uid, username, token)
+        area = claim_territory(name, corners, token)
         print(f"✔ {username:7s} -> {name:16s} (~{area:.0f} m²)  uid={uid}")
 
     # Fetheden kullanıcı: yalnızca hesap + boş kullanıcı dökümanı.
     uid, token = ensure_user("fatih")
-    write_user_doc(uid, "fatih", token, 0)
+    write_user_doc(uid, "fatih", token)
     print(f"✔ fatih   -> (alan yok; uygulamada Rota 5'i koşacak)  uid={uid}")
     print("\nTüm test kullanıcılarının şifresi: test1234")
 

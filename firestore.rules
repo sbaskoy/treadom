@@ -27,15 +27,12 @@ service cloud.firestore {
 
     // Fethedilen alanlar: territories/{id}
     //
-    // PROTOTİP GÜVENLİĞİ: Kısmi fetih, fetheden kullanıcının rakip alanını
-    // küçültmesini (rakibin dökümanına yazmasını) ve tamamen fethedince
-    // silmesini gerektirir. Bu mantık şu an istemci tarafında çalıştığından,
-    // giriş yapmış her kullanıcının alan yazabilmesine izin veriyoruz.
-    // ÜRETİMDE: fetih hesabı bir Cloud Function'a taşınmalı ve bu kurallar
-    // yeniden sıkılaştırılmalı (yazmayı yalnızca sunucuya/sahibe açacak şekilde).
+    // Fetih hesabı `claimTerritory` Cloud Function'ına taşındığından (admin
+    // yetkisiyle yazar), istemci alanları yalnızca OKUYABİLİR. Hiçbir istemci
+    // doğrudan yazamaz; tüm oluşturma/güncelleme/silme sunucudan gelir.
     match /territories/{territoryId} {
       allow read: if request.auth != null;
-      allow create, update, delete: if request.auth != null;
+      allow write: if false;
     }
 
     // Sohbetler: chats/{id} ve mesajları.
@@ -63,7 +60,13 @@ service cloud.firestore {
                       && request.auth.uid in chat().participants
                       && chat().status == 'active'
                       && request.resource.data.senderId == request.auth.uid;
-        allow update, delete: if false;
+        // Katılımcılar yalnızca teslim/okundu durumunu güncelleyebilir
+        // (içerik/gönderen değişemez) — "iletildi"/"görüldü" için.
+        allow update: if request.auth != null
+                      && request.auth.uid in chat().participants
+                      && request.resource.data.text == resource.data.text
+                      && request.resource.data.senderId == resource.data.senderId;
+        allow delete: if false;
       }
     }
   }

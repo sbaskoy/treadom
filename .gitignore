@@ -44,6 +44,13 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Release signing — NEVER commit (keystore + passwords). Bunlar yalnızca yerel
+# makinede durur; kaybolursa ayrı güvenli yedekten gelir.
+*.jks
+*.keystore
+key.properties
+/android/key.properties
+
 # Firebase Hosting deploy cache
 .firebase/
 

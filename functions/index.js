@@ -15,14 +15,93 @@
 //   - döngü bir alanı böldüyse kalan her parça ayrı alan olur,
 //   - alanın ortasından geçilirse delik (hole) oluşur.
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const polygonClipping = require("polygon-clipping");
 
 admin.initializeApp();
 const db = admin.firestore();
+const messaging = admin.messaging();
 const GeoPoint = admin.firestore.GeoPoint;
 const FieldValue = admin.firestore.FieldValue;
+
+const REGION = "us-central1";
+
+// --- Push bildirim yardımcıları -------------------------------------------
+
+// Bir kullanıcının kayıtlı FCM token'larını döner (yoksa boş dizi).
+async function tokensForUid(uid) {
+  const doc = await db.collection("users").doc(uid).get();
+  const t = doc.exists && doc.data().fcmTokens;
+  return Array.isArray(t) ? t : [];
+}
+
+// Bir kullanıcının tüm cihazlarına bildirim gönderir ve geçersiz token'ları
+// temizler. notification = {title, body}, data = düz string harita.
+async function sendToUid(uid, notification, data) {
+  const tokens = await tokensForUid(uid);
+  if (!tokens.length) return;
+  const res = await messaging.sendEachForMulticast({
+    tokens,
+    notification,
+    data: data || {},
+    android: {
+      priority: "high",
+      notification: { channelId: "treadom_messages" },
+    },
+    apns: { payload: { aps: { sound: "default" } } },
+  });
+  const invalid = [];
+  res.responses.forEach((r, i) => {
+    const code = r.error && r.error.code;
+    if (
+      code === "messaging/invalid-registration-token" ||
+      code === "messaging/registration-token-not-registered"
+    ) {
+      invalid.push(tokens[i]);
+    }
+  });
+  if (invalid.length) {
+    await db
+      .collection("users")
+      .doc(uid)
+      .update({ fcmTokens: FieldValue.arrayRemove(...invalid) });
+  }
+}
+
+// Yeni sohbet mesajında, gönderen dışındaki katılımcılara bildirim gönderir.
+exports.onChatMessage = onDocumentCreated(
+  { region: REGION, maxInstances: 10, document: "chats/{chatId}/messages/{messageId}" },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const msg = snap.data();
+    if (!msg) return;
+    const chatId = event.params.chatId;
+    const messageId = event.params.messageId;
+
+    const chatDoc = await db.collection("chats").doc(chatId).get();
+    if (!chatDoc.exists) return;
+    const chat = chatDoc.data();
+    const participants = chat.participants || [];
+    const senderId = msg.senderId;
+    const senderName = msg.senderName || "";
+    const text = msg.text || "";
+    const isGroup = !!chat.isGroup;
+
+    const title = isGroup ? chat.name || senderName : senderName;
+    const body = isGroup ? `${senderName}: ${text}` : text;
+    const data = { type: "chat", chatId, messageId };
+
+    await Promise.all(
+      participants
+        .filter((u) => u && u !== senderId)
+        .map((u) => sendToUid(u, { title, body }, data))
+    );
+  }
+);
+
 
 const EARTH_R = 6378137.0; // WGS84 ekvator yarıçapı (m)
 
@@ -79,6 +158,33 @@ function bbox(ring) {
 const bboxOverlap = (a, b) =>
   a.mnLa <= b.mxLa && a.mxLa >= b.mnLa && a.mnLn <= b.mxLn && a.mxLn >= b.mnLn;
 
+// Bir halkanın temsilî merkez noktası (sınır kutusu merkezi) — viewport
+// sorgusu için territory dökümanına yazılır. Kutu merkezi her zaman alanın
+// yakınındadır, böylece harita görünür alan sorgusu alanı yakalar.
+function centroidOf(ring) {
+  const b = bbox(ring);
+  return { lat: (b.mnLa + b.mxLa) / 2, lng: (b.mnLn + b.mxLn) / 2 };
+}
+
+// Bir kullanıcının denormalize toplamlarını (liderlik tablosu için) territory
+// koleksiyonundan yeniden hesaplayıp user dökümanına yazar.
+async function recomputeUserTotals(ownerUid) {
+  if (!ownerUid) return;
+  const snap = await db
+    .collection("territories")
+    .where("ownerUid", "==", ownerUid)
+    .get();
+  let total = 0;
+  snap.forEach((d) => {
+    const a = d.data().areaM2;
+    if (typeof a === "number") total += a;
+  });
+  await db
+    .collection("users")
+    .doc(ownerUid)
+    .set({ totalAreaM2: total, territoryCount: snap.size }, { merge: true });
+}
+
 exports.claimTerritory = onCall(
   { region: "us-central1", maxInstances: 10 },
   async (request) => {
@@ -106,6 +212,9 @@ exports.claimTerritory = onCall(
 
     const snap = await terr.get();
     const conqueredFrom = [];
+    // Fethedilen rakiplerin uid'leri (kişi başına bir "bölgen ele geçirildi"
+    // bildirimi gönderilir).
+    const conqueredUids = new Set();
 
     // Yeni döngüyle başla; kendi (çakışan) alanlarımı buna katıp TEK polygon
     // yaparım — böylece bir kişide üst üste binen iki ayrı polygon kalmaz.
@@ -153,17 +262,22 @@ exports.claimTerritory = onCall(
 
       // Rakip alan: kısmi/tam fetih.
       conqueredFrom.push(d.ownerUsername || "");
+      if (d.ownerUid && d.ownerUid !== uid) conqueredUids.add(d.ownerUid);
       if (pieces.length === 0) {
         batch.delete(doc.ref); // tamamen fethedildi → sil
         continue;
       }
+      const c0 = centroidOf(pieces[0].outer);
       batch.update(doc.ref, {
         points: geoPoints(pieces[0].outer),
         holes: holesField(pieces[0].holes),
         areaM2: pieces[0].area,
+        centroidLat: c0.lat,
+        centroidLng: c0.lng,
       });
       for (let i = 1; i < pieces.length; i++) {
         const extra = terr.doc();
+        const ci = centroidOf(pieces[i].outer);
         batch.set(extra, {
           ownerUid: d.ownerUid,
           ownerUsername: d.ownerUsername || "",
@@ -171,6 +285,8 @@ exports.claimTerritory = onCall(
           points: geoPoints(pieces[i].outer),
           holes: holesField(pieces[i].holes),
           areaM2: pieces[i].area,
+          centroidLat: ci.lat,
+          centroidLng: ci.lng,
           createdAt: d.createdAt || FieldValue.serverTimestamp(),
           previousOwnerUsername: null,
         });
@@ -185,6 +301,7 @@ exports.claimTerritory = onCall(
       const holes = poly.slice(1).map(fromPC);
       const ref = terr.doc();
       if (!firstId) firstId = ref.id;
+      const c = centroidOf(outer);
       batch.set(ref, {
         ownerUid: uid,
         ownerUsername: username,
@@ -192,12 +309,137 @@ exports.claimTerritory = onCall(
         points: geoPoints(outer),
         holes: holesField(holes),
         areaM2: shapeArea(outer, holes),
+        centroidLat: c.lat,
+        centroidLng: c.lng,
         createdAt: FieldValue.serverTimestamp(),
         previousOwnerUsername: null,
       });
     }
 
     await batch.commit();
+
+    // Etkilenen kullanıcıların (ben + fethedilenler) denormalize toplamlarını
+    // yeniden hesapla (liderlik tablosu `users.totalAreaM2`'den okunur).
+    const affected = new Set([uid, ...conqueredUids]);
+    await Promise.all(
+      [...affected].map((u) =>
+        recomputeUserTotals(u).catch((e) =>
+          console.error("recomputeUserTotals hata:", u, e)
+        )
+      )
+    );
+
+    // Fethedilen her kullanıcıya push bildirimi gönder (bildirim hatası fethi
+    // etkilememeli).
+    if (conqueredUids.size > 0) {
+      const conqueror = username || name || "Birisi";
+      await Promise.all(
+        [...conqueredUids].map((to) =>
+          sendToUid(
+            to,
+            {
+              title: "Bölgen ele geçirildi!",
+              body: `${conqueror} bir bölgeni ele geçirdi.`,
+            },
+            { type: "conquest" }
+          ).catch((e) => console.error("conquest push hata:", e))
+        )
+      );
+    }
+
     return { territoryId: firstId, conqueredFrom };
+  }
+);
+
+// Kullanıcının tek alan adını değiştirir ve TÜM alanlarının etiketini
+// (denormalize `name`) buna eşitler. `territories` istemciye salt-okunur
+// olduğundan relabel admin yetkisiyle burada yapılır.
+exports.renameLand = onCall(
+  { region: "us-central1", maxInstances: 10 },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Giriş gerekli.");
+    }
+    const uid = request.auth.uid;
+    const landName = (request.data && request.data.landName ? request.data.landName : "")
+      .toString()
+      .slice(0, 60)
+      .trim();
+
+    const userRef = db.collection("users").doc(uid);
+    const userDoc = await userRef.get();
+    const username = (userDoc.exists && userDoc.data().username) || "";
+    const label = landName === "" ? username : landName;
+
+    const mine = await db
+      .collection("territories")
+      .where("ownerUid", "==", uid)
+      .get();
+
+    let batch = db.batch();
+    let n = 0;
+    batch.set(userRef, { landName }, { merge: true });
+    n++;
+    for (const doc of mine.docs) {
+      batch.update(doc.ref, { name: label });
+      n++;
+      if (n >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        n = 0;
+      }
+    }
+    if (n > 0) await batch.commit();
+    return { ok: true };
+  }
+);
+
+// TEK SEFERLİK bakım: mevcut alanlara centroid ekler ve tüm sahiplerin
+// denormalize toplamlarını yeniden hesaplar (viewport sorgusu + liderlik
+// tablosu yeni alanlara dayandığından eski veriyi taşımak için). Basit bir
+// anahtarla korunur; çalıştırıldıktan sonra kaldırılabilir.
+exports.backfillTerritories = onRequest(
+  { region: "us-central1", maxInstances: 1 },
+  async (req, res) => {
+    if (req.query.key !== "treadom-backfill-2026") {
+      res.status(403).send("forbidden");
+      return;
+    }
+    const snap = await db.collection("territories").get();
+    const owners = new Set();
+    let batch = db.batch();
+    let n = 0;
+    let updated = 0;
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      if (d.ownerUid) owners.add(d.ownerUid);
+      const hasCentroid =
+        typeof d.centroidLat === "number" && typeof d.centroidLng === "number";
+      if (hasCentroid) continue;
+      const outer = (d.points || []).map((g) => ({
+        lat: g.latitude,
+        lng: g.longitude,
+      }));
+      if (outer.length < 3) continue;
+      const c = centroidOf(outer);
+      batch.update(doc.ref, { centroidLat: c.lat, centroidLng: c.lng });
+      updated++;
+      n++;
+      if (n >= 400) {
+        await batch.commit();
+        batch = db.batch();
+        n = 0;
+      }
+    }
+    if (n > 0) await batch.commit();
+
+    for (const o of owners) {
+      await recomputeUserTotals(o).catch((e) =>
+        console.error("backfill recompute hata:", o, e)
+      );
+    }
+    res.send(
+      `done: centroids updated ${updated}, owners recomputed ${owners.size}`
+    );
   }
 );

@@ -1,11 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../models/app_user.dart';
 import '../models/run_record.dart';
 import '../models/territory.dart';
-import 'geo.dart';
-import 'run_math.dart' show planarAreaM2;
 
 /// Bir turun fethedilen alan sahiplenme işleminin sonucu.
 class ClaimOutcome {
@@ -58,22 +57,15 @@ class FirestoreService {
   }
 
   /// Kullanıcının tek alan adını günceller ve mevcut TÜM alanlarının etiketini
-  /// (denormalize `name`) buna eşitler — böylece haritada tutarlı görünür.
+  /// (denormalize `name`) buna eşitler. `territories` istemciye salt-okunur
+  /// olduğundan relabel SUNUCUDA (`renameLand` Cloud Function) yapılır.
   Future<void> updateLandName({
     required String uid,
     required String landName,
   }) async {
-    final trimmed = landName.trim();
-    final batch = _db.batch();
-    batch.update(_users.doc(uid), {'landName': trimmed});
-
-    final mine = await _territories.where('ownerUid', isEqualTo: uid).get();
-    for (final doc in mine.docs) {
-      final label =
-          trimmed.isEmpty ? (doc.data()['ownerUsername'] as String? ?? '') : trimmed;
-      batch.update(doc.reference, {'name': label});
-    }
-    await batch.commit();
+    final callable = FirebaseFunctions.instanceFor(region: 'us-central1')
+        .httpsCallable('renameLand');
+    await callable.call(<String, dynamic>{'landName': landName.trim()});
   }
 
   /// Belirli bir kullanıcının dökümanını getirir (yoksa null).
@@ -104,30 +96,86 @@ class FirestoreService {
     return snap.docs.map(AppUser.fromFirestore).toList();
   }
 
-  // --- Alanlar (territories) ---
-
-  /// Tüm alanları canlı yayınlar (harita üzerinde herkesin alanını çizmek için).
-  Stream<List<Territory>> territoriesStream() {
-    return _territories.snapshots().map(
-          (snap) => snap.docs.map(Territory.fromFirestore).toList(),
-        );
+  /// Kullanıcı dökümanını canlı yayınlar (kendi profilim/landName/denormalize
+  /// toplamlar için).
+  Stream<AppUser?> userStream(String uid) {
+    return _users
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.exists ? AppUser.fromFirestore(doc) : null);
   }
 
-  /// Tamamlanan bir döngü için yeni bir alan oluşturur ve aynı işlemde, döngünün
-  /// kapladığı rakip alan parçalarını fetheder (KISMİ fetih).
+  /// Liderlik tablosu: en yüksek toplam alana sahip kullanıcılar (denormalize
+  /// `totalAreaM2`'den). Tüm `territories` taranmaz; tek-alan sıralaması
+  /// otomatik indekslenir.
+  Stream<List<AppUser>> topUsersStream({int limit = 50}) {
+    return _users
+        .orderBy('totalAreaM2', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs.map(AppUser.fromFirestore).toList());
+  }
+
+  /// Verilen alandan (m²) daha büyük toplam alana sahip kullanıcı SAYISINI
+  /// döner (sıralama hesabı için; agregasyon sorgusu, doküman okumaz).
+  Future<int> usersAboveArea(double areaM2) async {
+    final agg = await _users
+        .where('totalAreaM2', isGreaterThan: areaM2)
+        .count()
+        .get();
+    return agg.count ?? 0;
+  }
+
+  // --- Alanlar (territories) ---
+
+  /// Harita görünür alanındaki (viewport) alanları canlı yayınlar: merkezi
+  /// (centroid) verilen sınır kutusu içinde olanlar. Tüm koleksiyonu indirmemek
+  /// için; `territories` üzerinde (centroidLat, centroidLng) bileşik indeksi
+  /// gerekir (firestore.indexes.json).
+  Stream<List<Territory>> territoriesInBounds({
+    required double minLat,
+    required double maxLat,
+    required double minLng,
+    required double maxLng,
+  }) {
+    return _territories
+        .where('centroidLat', isGreaterThanOrEqualTo: minLat)
+        .where('centroidLat', isLessThanOrEqualTo: maxLat)
+        .where('centroidLng', isGreaterThanOrEqualTo: minLng)
+        .where('centroidLng', isLessThanOrEqualTo: maxLng)
+        .snapshots()
+        .map((snap) => snap.docs.map(Territory.fromFirestore).toList());
+  }
+
+  /// Kullanıcının KENDİ alanlarını canlı yayınlar (loop-closure geometrisi ve
+  /// "kendi toprağım" için — viewport dışında bile gerekir). `ownerUid` tek-alan
+  /// sorgusu otomatik indekslenir.
+  Stream<List<Territory>> myTerritoriesStream(String uid) {
+    return _territories
+        .where('ownerUid', isEqualTo: uid)
+        .snapshots()
+        .map((snap) => snap.docs.map(Territory.fromFirestore).toList());
+  }
+
+  /// Belirli bir kullanıcının tüm alanlarını tek seferlik getirir (haritayı o
+  /// kullanıcının topraklarına odaklamak için).
+  Future<List<Territory>> territoriesOf(String uid) async {
+    final snap =
+        await _territories.where('ownerUid', isEqualTo: uid).get();
+    return snap.docs.map(Territory.fromFirestore).toList();
+  }
+
+  /// Tamamlanan bir döngü için alan sahiplenme/fetih işlemini SUNUCUDA
+  /// (`claimTerritory` Cloud Function) çalıştırır.
   ///
-  /// Kural: rakip alandan, benim döngümün kapladığı bölge çıkarılır (boolean
-  /// difference). Geri kalan rakipte kalır; benim yeni alanım ise döngünün
-  /// tamamıdır (çakışma bölgesi dahil) — böylece çift sayım olmaz.
-  ///   - Rakip alan döngümle TAMAMEN kapanırsa silinir; o bölge artık yalnızca
-  ///     benim tek alanım olarak (kendi adımla) görünür.
-  ///   - Kısmen çakışırsa rakip alan küçülür (adı/sahibi korunur); döngü onu
-  ///     ikiye böldüyse kalan her parça ayrı bir alan olur.
+  /// Kısmi/tam fetih, rakip alanlara yazmayı ve tam fethedilen alanları silmeyi
+  /// gerektirir; bunu admin yetkisiyle sunucu yapar, böylece `territories`
+  /// koleksiyonu istemciye salt-okunur kalır (bkz. firestore.rules). Fethedilen
+  /// kullanıcılara "bölgen ele geçirildi" push bildirimini de fonksiyon gönderir.
   ///
-  /// Tüm alanlar okunur, kesişimler istemcide [polygonDifference] ile hesaplanır
-  /// ve yazımlar tek bir toplu işlemle (batch) uygulanır. Bu, rakibe ait
-  /// dökümanlara yazmayı gerektirdiğinden güvenlik kuralları gevşetilmiştir
-  /// (bkz. firestore.rules — prototip; üretimde Cloud Function'a taşınmalı).
+  /// İstemci yalnızca döngü noktalarını ve alan adını yollar. [uid]/[username]/
+  /// [areaM2] sunucu tarafında oturumdan/geometriden türetildiği için
+  /// kullanılmaz (çağrı imzası sağlayıcıyla uyumlu kalsın diye duruyor).
   Future<ClaimOutcome> claimTerritory({
     required String uid,
     required String username,
@@ -135,135 +183,21 @@ class FirestoreService {
     required List<LatLng> points,
     required double areaM2,
   }) async {
-    final batch = _db.batch();
-    final loopBox = _Box.of(points);
-    final existing = await _territories.get();
-
-    // Yeni döngüyle başla; kendi (çakışan) alanlarımı buna katıp TEK polygon
-    // yapacağım. Böylece bir kişide üst üste binen iki ayrı polygon kalmaz.
-    final mine = <TerritoryShape>[TerritoryShape(outer: points)];
-    final ownToDelete = <DocumentReference<Map<String, dynamic>>>[];
-    final conqueredFrom = <String>[];
-
-    for (final doc in existing.docs) {
-      final data = doc.data();
-      final isOwn = (data['ownerUid'] as String?) == uid;
-
-      final otherOuter = _ringFrom(data['points']);
-      if (otherOuter.length < 3) continue;
-      // Hızlı eleme: sınır kutuları kesişmiyorsa kesinlikle çakışma yok.
-      if (!loopBox.overlaps(_Box.of(otherOuter))) continue;
-
-      final otherHoles = ((data['holes'] as List?) ?? const [])
-          .whereType<Map>()
-          .map((h) => _ringFrom(h['points']))
-          .where((r) => r.length >= 3)
-          .toList();
-
-      final shapes = polygonDifference(
-        subjectOuter: otherOuter,
-        subjectHoles: otherHoles,
-        clip: points,
-      );
-      final origArea = (data['areaM2'] as num?)?.toDouble() ??
-          planarAreaM2(otherOuter);
-      final remaining = shapes.fold<double>(0, (a, s) => a + shapeAreaM2(s));
-      if ((origArea - remaining).abs() < 0.5) continue; // çakışma yok → dokunma
-
-      if (isOwn) {
-        // Kendi alanım: yeni döngüyle birleştirilecek (tek polygon). Eski
-        // dökümanını sileceğiz.
-        mine.add(TerritoryShape(outer: otherOuter, holes: otherHoles));
-        ownToDelete.add(doc.reference);
-        continue;
-      }
-
-      // Rakip alan: kısmi/tam fetih.
-      conqueredFrom.add((data['ownerUsername'] as String?) ?? '');
-      if (shapes.isEmpty) {
-        batch.delete(doc.reference); // tamamen fethedildi → sil
-        continue;
-      }
-      // Kalan ilk parça mevcut dökümanı günceller (rakip sahip/ad korunur).
-      batch.update(doc.reference, {
-        'points': _geoPoints(shapes.first.outer),
-        'holes': _holesField(shapes.first.holes),
-        'areaM2': shapeAreaM2(shapes.first),
-      });
-      // Döngü alanı böldüyse, ek parçalar aynı rakibe ait yeni alanlar olur.
-      for (var i = 1; i < shapes.length; i++) {
-        final extraRef = _territories.doc();
-        batch.set(extraRef, _territoryData(
-          ownerUid: (data['ownerUid'] as String?) ?? '',
-          ownerUsername: (data['ownerUsername'] as String?) ?? '',
-          name: (data['name'] as String?) ?? '',
-          outer: shapes[i].outer,
-          holes: shapes[i].holes,
-          areaM2: shapeAreaM2(shapes[i]),
-          createdAt: data['createdAt'],
-        ));
-      }
-    }
-
-    // Kendi (çakışan) alanlarımı yeni döngüyle birleştir → tek polygon, eskileri
-    // sil.
-    for (final ref in ownToDelete) {
-      batch.delete(ref);
-    }
-    final merged = mine.length == 1 ? mine : polygonUnion(mine);
-    String? firstId;
-    for (final shape in merged) {
-      final ref = _territories.doc();
-      firstId ??= ref.id;
-      batch.set(ref, _territoryData(
-        ownerUid: uid,
-        ownerUsername: username,
-        name: name,
-        outer: shape.outer,
-        holes: shape.holes,
-        areaM2: shapeAreaM2(shape),
-      ));
-    }
-
-    await batch.commit();
-    return ClaimOutcome(territoryId: firstId ?? '', conqueredFrom: conqueredFrom);
-  }
-
-  // Firestore serileştirme yardımcıları.
-
-  List<GeoPoint> _geoPoints(List<LatLng> ring) =>
-      ring.map((p) => GeoPoint(p.latitude, p.longitude)).toList();
-
-  /// Delikler iç içe dizi olarak saklanamaz; her biri {points:[...]} haritasıdır.
-  List<Map<String, dynamic>> _holesField(List<List<LatLng>> holes) =>
-      holes.map((h) => {'points': _geoPoints(h)}).toList();
-
-  Map<String, dynamic> _territoryData({
-    required String ownerUid,
-    required String ownerUsername,
-    required String name,
-    required List<LatLng> outer,
-    required double areaM2,
-    List<List<LatLng>> holes = const [],
-    Object? createdAt,
-  }) {
-    return {
-      'ownerUid': ownerUid,
-      'ownerUsername': ownerUsername,
+    final callable = FirebaseFunctions.instanceFor(region: 'us-central1')
+        .httpsCallable('claimTerritory');
+    final res = await callable.call(<String, dynamic>{
       'name': name,
-      'points': _geoPoints(outer),
-      'holes': _holesField(holes),
-      'areaM2': areaM2,
-      'createdAt': createdAt ?? FieldValue.serverTimestamp(),
-      'previousOwnerUsername': null,
-    };
+      'points': [
+        for (final p in points) {'lat': p.latitude, 'lng': p.longitude},
+      ],
+    });
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final territoryId = (data['territoryId'] as String?) ?? '';
+    final conqueredFrom = ((data['conqueredFrom'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList();
+    return ClaimOutcome(territoryId: territoryId, conqueredFrom: conqueredFrom);
   }
-
-  static List<LatLng> _ringFrom(Object? raw) =>
-      ((raw as List?) ?? const [])
-          .whereType<GeoPoint>()
-          .map((g) => LatLng(g.latitude, g.longitude))
-          .toList();
 
   // --- Yürüme geçmişi (runs) ---
 
@@ -282,32 +216,4 @@ class FirestoreService {
         .snapshots()
         .map((snap) => snap.docs.map(RunRecord.fromFirestore).toList());
   }
-}
-
-/// Hızlı çakışma elemesi için basit bir enlem/boylam sınır kutusu.
-class _Box {
-  const _Box(this.minLat, this.minLng, this.maxLat, this.maxLng);
-
-  final double minLat;
-  final double minLng;
-  final double maxLat;
-  final double maxLng;
-
-  factory _Box.of(List<LatLng> ring) {
-    var minLat = double.infinity, minLng = double.infinity;
-    var maxLat = -double.infinity, maxLng = -double.infinity;
-    for (final p in ring) {
-      if (p.latitude < minLat) minLat = p.latitude;
-      if (p.latitude > maxLat) maxLat = p.latitude;
-      if (p.longitude < minLng) minLng = p.longitude;
-      if (p.longitude > maxLng) maxLng = p.longitude;
-    }
-    return _Box(minLat, minLng, maxLat, maxLng);
-  }
-
-  bool overlaps(_Box o) =>
-      minLat <= o.maxLat &&
-      maxLat >= o.minLat &&
-      minLng <= o.maxLng &&
-      maxLng >= o.minLng;
 }

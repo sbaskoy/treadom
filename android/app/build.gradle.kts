@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -8,6 +11,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Release imza bilgileri android/key.properties'ten okunur (repoya GİRMEZ;
+// .gitignore'da). Dosya yoksa (ör. başka makinede) release build debug
+// anahtarıyla imzalanır — böylece `flutter run --release` yine çalışır, ama
+// Play'e yüklenecek sürüm bu dosyayla imzalanmalıdır.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hasReleaseKeystore = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.salimbaskoy.treadom"
     compileSdk = flutter.compileSdkVersion
@@ -16,6 +30,9 @@ android {
     ndkVersion = "27.0.12077973"
 
     compileOptions {
+        // flutter_local_notifications (java.time tabanlı zamanlanmış bildirimler)
+        // eski Android sürümlerinde core library desugaring gerektirir.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
@@ -36,15 +53,35 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseKeystore) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // key.properties varsa gerçek release anahtarıyla, yoksa (yerel test
+            // için) debug anahtarıyla imzala.
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // core library desugaring (flutter_local_notifications için gerekli).
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

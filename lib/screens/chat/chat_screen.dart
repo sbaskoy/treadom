@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -97,9 +98,21 @@ class _ChatScreenState extends State<ChatScreen> {
                   stream: chat.service.messagesStream(widget.chatId),
                   builder: (context, msgSnap) {
                     final messages = msgSnap.data ?? const <ChatMessage>[];
+                    // Gönderen dışındaki katılımcılar (teslim/okundu hesabı için).
+                    final others = (thread?.participants ?? const <String>[])
+                        .where((u) => u != myUid)
+                        .toList();
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (_scroll.hasClients) {
                         _scroll.jumpTo(_scroll.position.maxScrollExtent);
+                      }
+                      // Ekran açık → karşı tarafın mesajlarını "görüldü" yap.
+                      if (myUid != null && messages.isNotEmpty) {
+                        chat.service.markRead(
+                          chatId: widget.chatId,
+                          uid: myUid,
+                          messages: messages,
+                        );
                       }
                     });
                     return ListView.builder(
@@ -110,6 +123,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         message: messages[i],
                         mine: messages[i].senderId == myUid,
                         showSender: isGroup,
+                        others: others,
                       ),
                     );
                   },
@@ -132,20 +146,44 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 /// Tek bir mesaj balonu (kendi mesajların sağda, diğerleri solda).
+/// Altında gönderim saati/tarihi; kendi mesajlarında ayrıca teslim/okundu
+/// göstergesi (✓ gönderildi, ✓✓ iletildi, mavi ✓✓ görüldü) bulunur.
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.message,
     required this.mine,
     required this.showSender,
+    required this.others,
   });
 
   final ChatMessage message;
   final bool mine;
   final bool showSender;
 
+  /// Gönderen dışındaki katılımcı uid'leri (teslim/okundu durumu için).
+  final List<String> others;
+
+  /// Mesaj zaman damgasını biçimlendirir: bugünse yalnızca saat, başka günse
+  /// tarih + saat (cihaz diline göre).
+  String _stamp(BuildContext context) {
+    final dt = message.createdAt;
+    if (dt == null) return '';
+    final locale = Localizations.localeOf(context).toString();
+    final time = DateFormat.Hm(locale).format(dt);
+    final now = DateTime.now();
+    final sameDay =
+        dt.year == now.year && dt.month == now.month && dt.day == now.day;
+    if (sameDay) return time;
+    return '${DateFormat.MMMd(locale).format(dt)} $time';
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final onBubble = mine ? scheme.onPrimary : scheme.onSurface;
+    final metaColor = onBubble.withValues(alpha: 0.7);
+    final stamp = _stamp(context);
+
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -178,14 +216,63 @@ class _Bubble extends StatelessWidget {
               ),
             Text(
               message.text,
-              style: TextStyle(
-                color: mine ? scheme.onPrimary : scheme.onSurface,
-                fontSize: 15,
-              ),
+              style: TextStyle(color: onBubble, fontSize: 15),
+            ),
+            const SizedBox(height: 3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (stamp.isNotEmpty)
+                  Text(
+                    stamp,
+                    style: TextStyle(fontSize: 10.5, color: metaColor),
+                  ),
+                if (mine) ...[
+                  const SizedBox(width: 4),
+                  _ReceiptTick(
+                    message: message,
+                    others: others,
+                    baseColor: metaColor,
+                  ),
+                ],
+              ],
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Kendi mesajların için teslim/okundu göstergesi:
+/// tek ✓ = gönderildi, çift ✓✓ = iletildi, mavi çift ✓✓ = görüldü.
+class _ReceiptTick extends StatelessWidget {
+  const _ReceiptTick({
+    required this.message,
+    required this.others,
+    required this.baseColor,
+  });
+
+  final ChatMessage message;
+  final List<String> others;
+  final Color baseColor;
+
+  @override
+  Widget build(BuildContext context) {
+    // Henüz sunucuya yazılmadıysa (zaman damgası yok) saat ikonu göster.
+    if (message.createdAt == null) {
+      return Icon(Icons.access_time, size: 13, color: baseColor);
+    }
+    final read = message.readByAll(others);
+    final delivered = message.deliveredToAll(others);
+    if (read) {
+      return Icon(Icons.done_all, size: 15,
+          color: const Color(0xFF53BDEB)); // okundu → mavi
+    }
+    return Icon(
+      delivered ? Icons.done_all : Icons.check,
+      size: 15,
+      color: baseColor,
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../providers/run_provider.dart';
 import '../../providers/territory_provider.dart';
 import '../../providers/weight_provider.dart';
 import '../../services/geo.dart';
+import '../../services/push_service.dart';
 import '../../services/run_math.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/leaderboard_sheet.dart';
@@ -83,6 +84,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       if (uid != null) {
         context.read<TerritoryProvider>().bind(uid);
         context.read<ChatProvider>().bind(uid);
+        // Push bildirim izni iste ve FCM token'ını kullanıcıya bağla.
+        PushService.instance.registerForUser(uid);
       }
     });
   }
@@ -142,6 +145,15 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     if (hasGesture && _follow) {
       setState(() => _follow = false);
     }
+    // Görünür alanı sağlayıcıya bildir → alanlar yalnızca bu kutu için sorgulanır
+    // (tüm koleksiyon indirilmez). Sağlayıcı debounce/eşik uygular.
+    final b = camera.visibleBounds;
+    context.read<TerritoryProvider>().setViewport(
+          minLat: b.south,
+          maxLat: b.north,
+          minLng: b.west,
+          maxLng: b.east,
+        );
   }
 
   /// Tur durumunu izler; "finished"a geçişte alan sahiplenme akışını bir kez
@@ -249,9 +261,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   /// Haritayı belirtilen kullanıcının tüm alanlarını kapsayacak şekilde
   /// kaydırır/yakınlaştırır ve o alanları vurgular.
-  void _focusUser(String uid, String username) {
+  Future<void> _focusUser(String uid, String username) async {
     final territory = context.read<TerritoryProvider>();
-    final points = territory.territoryPointsOf(uid);
+    // O kullanıcının alanları viewport dışında olabileceğinden tek seferlik
+    // sorguyla getir.
+    final points = await territory.pointsOf(uid);
+    if (!mounted) return;
     if (points.isEmpty) {
       // Aranan/seçilen kişinin henüz alanı yoksa kullanıcıyı bilgilendir.
       showAppSnackBar(
