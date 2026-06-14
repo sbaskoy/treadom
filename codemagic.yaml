@@ -1,0 +1,50 @@
+# Codemagic CI — Mac olmadan iOS derleyip TestFlight'a yükler.
+#
+# ÖN KOŞULLAR (Codemagic arayüzünde bir kez ayarlanır):
+#  1) Apple Developer Program üyeliği ($99/yıl).
+#  2) App Store Connect API anahtarı (.p8) Codemagic'e "App Store Connect"
+#     entegrasyonu olarak eklenir; aşağıdaki `app_store_connect: AppStoreConnect`
+#     bu entegrasyonun ADIDIR — Codemagic'te verdiğin adla eşleşmeli.
+#  3) App Store Connect'te uygulama kaydı oluşturulur (bundle id ile).
+#
+# Otomatik imzalama: ios_signing + app_store_connect entegrasyonu sayesinde
+# Codemagic, dağıtım sertifikası ve provisioning profilini KENDİ üretir
+# (Mac/Xcode'da elle uğraşmazsın).
+
+workflows:
+  ios-testflight:
+    name: iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: AppStoreConnect   # ← Codemagic'teki entegrasyon adın
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.salimbaskoy.treadom
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Flutter paketlerini al
+        script: flutter pub get
+      - name: CocoaPods kur
+        script: |
+          find . -name "Podfile" -execdir pod install \;
+      - name: Kod imzalama profillerini uygula
+        script: xcode-project use-profiles
+      - name: IPA derle
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # İlk yüklemeden sonra TestFlight "iç test" grubuna otomatik dağıt
+        # istersen aşağıyı aç ve grup adını yaz:
+        # beta_groups:
+        #   - Ic Test
