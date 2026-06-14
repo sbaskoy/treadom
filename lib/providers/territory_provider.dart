@@ -233,9 +233,14 @@ class TerritoryProvider extends ChangeNotifier {
       ];
 
   /// Verilen koşu izinin fethedilebilir bir kapalı halka oluşturup
-  /// oluşturmadığını döner.
-  LoopResult checkLoop(List<LatLng> route) =>
-      validateRunLoop(route: route, ownShapes: ownShapes);
+  /// oluşturmadığını döner. [maxSpeedMps] verilirse ve azami hızı ([kMaxRunSpeedMps])
+  /// aşıyorsa (araç hızı) tur geçersiz sayılır ("yürüyerek oyna" kapısı).
+  LoopResult checkLoop(List<LatLng> route, {double? maxSpeedMps}) {
+    if (maxSpeedMps != null && maxSpeedMps > kMaxRunSpeedMps) {
+      return const LoopResult(valid: false, reason: LoopFailReason.tooFast);
+    }
+    return validateRunLoop(route: route, ownShapes: ownShapes);
+  }
 
   /// Tamamlanan turu kaydeder: yürüme geçmişine yazar ve döngü kapandıysa
   /// (alan oluştuysa) sunucuda yeni alanı oluşturup çakışan rakip alanları
@@ -245,39 +250,54 @@ class TerritoryProvider extends ChangeNotifier {
     required double areaM2,
     required double distanceM,
     required Duration elapsed,
+    double? maxSpeedMps,
   }) async {
     final uid = _uid;
     if (uid == null) return null;
 
-    final loop = checkLoop(route);
+    final loop = checkLoop(route, maxSpeedMps: maxSpeedMps);
     final polygon = loop.polygon;
     final canClaim = loop.valid && polygon.length >= 3;
     final effectiveName = landName;
 
     ClaimOutcome? outcome;
+    var claimed = canClaim;
     if (canClaim) {
-      outcome = await _fs.claimTerritory(
-        uid: uid,
-        username: _username,
-        name: effectiveName,
-        points: polygon,
-        areaM2: planarAreaM2(polygon),
-      );
+      try {
+        outcome = await _fs.claimTerritory(
+          uid: uid,
+          username: _username,
+          name: effectiveName,
+          points: polygon,
+          areaM2: planarAreaM2(polygon),
+          durationSec: elapsed.inSeconds,
+        );
+      } catch (e) {
+        // Sunucu reddetti (ör. anti-cheat/geometri/hız doğrulaması) ya da ağ
+        // hatası: tur fethedilmemiş sayılır, uygulama çökmez.
+        claimed = false;
+        debugPrint('claimTerritory reddedildi/başarısız: $e');
+      }
     }
 
-    await _fs.saveRun(
-      uid: uid,
-      run: RunRecord(
-        id: '',
-        distanceM: distanceM,
-        durationSec: elapsed.inSeconds,
-        areaM2: areaM2,
-        route: route,
-        claimedTerritory: canClaim,
-        territoryName: canClaim ? effectiveName : null,
-        conqueredCount: outcome?.conqueredCount ?? 0,
-      ),
-    );
+    // Çok kısa turları (yerinde durma / GPS gürültüsü) geçmişe yazma. Fetih
+    // gerçekleşen turlar HER ZAMAN kaydedilir; aksi halde en az [kMinSavedRunMeters]
+    // mesafe gerekir.
+    if (claimed || distanceM >= kMinSavedRunMeters) {
+      await _fs.saveRun(
+        uid: uid,
+        run: RunRecord(
+          id: '',
+          distanceM: distanceM,
+          durationSec: elapsed.inSeconds,
+          areaM2: areaM2,
+          route: route,
+          claimedTerritory: claimed,
+          territoryName: claimed ? effectiveName : null,
+          conqueredCount: outcome?.conqueredCount ?? 0,
+        ),
+      );
+    }
 
     return outcome;
   }

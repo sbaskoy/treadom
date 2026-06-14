@@ -15,7 +15,7 @@
 //   - döngü bir alanı böldüyse kalan her parça ayrı alan olur,
 //   - alanın ortasından geçilirse delik (hole) oluşur.
 
-const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const polygonClipping = require("polygon-clipping");
@@ -105,6 +105,12 @@ exports.onChatMessage = onDocumentCreated(
 
 const EARTH_R = 6378137.0; // WGS84 ekvator yarıçapı (m)
 
+// --- Anti-cheat sınırları (sunucu doğrulaması) ---
+const MAX_CLAIM_POINTS = 5000; // absürt poligonları ele
+const MIN_CLAIM_AREA_M2 = 80; // dejenere/sıfır alan (istemci eşiği 100)
+const MAX_CLAIM_AREA_M2 = 5000000; // tek seferde ~5 km² üst sınır (harita kapma exploit'i)
+const MAX_SPEED_MPS = 7.0; // ~25 km/h; perimetre/süre ALT-sınır hız kontrolü için eşik
+
 // İstemcideki run_math.planarAreaM2 ile aynı (equirectangular + shoelace).
 function planarAreaM2(ring) {
   if (ring.length < 3) return 0;
@@ -124,6 +130,26 @@ function shapeArea(outer, holes) {
   let a = planarAreaM2(outer);
   for (const h of holes) a -= planarAreaM2(h);
   return a < 0 ? 0 : a;
+}
+
+// Bir halkanın çevre uzunluğu (m), planarAreaM2 ile aynı izdüşüm. Halkayı çevrelemek
+// için en az bu kadar yol yürünür → perimetre/süre, ortalama hız için ALT sınırdır.
+function ringPerimeterM(ring) {
+  if (ring.length < 2) return 0;
+  const lat0 = (ring[0].lat * Math.PI) / 180;
+  const cos0 = Math.cos(lat0);
+  const xy = ring.map((p) => [
+    EARTH_R * ((p.lng * Math.PI) / 180) * cos0,
+    EARTH_R * ((p.lat * Math.PI) / 180),
+  ]);
+  let per = 0;
+  for (let i = 0; i < xy.length; i++) {
+    const j = (i + 1) % xy.length; // halkayı kapat
+    const dx = xy[i][0] - xy[j][0];
+    const dy = xy[i][1] - xy[j][1];
+    per += Math.sqrt(dx * dx + dy * dy);
+  }
+  return per;
 }
 
 // {lat,lng} halkası <-> polygon-clipping [lng,lat] halkası
@@ -166,6 +192,22 @@ function centroidOf(ring) {
   return { lat: (b.mnLa + b.mxLa) / 2, lng: (b.mnLn + b.mxLn) / 2 };
 }
 
+// Verilen döküman referanslarını parça parça (batch sınırı 500) siler.
+async function deleteRefs(refs) {
+  let batch = db.batch();
+  let n = 0;
+  for (const ref of refs) {
+    batch.delete(ref);
+    n++;
+    if (n >= 400) {
+      await batch.commit();
+      batch = db.batch();
+      n = 0;
+    }
+  }
+  if (n > 0) await batch.commit();
+}
+
 // Bir kullanıcının denormalize toplamlarını (liderlik tablosu için) territory
 // koleksiyonundan yeniden hesaplayıp user dökümanına yazar.
 async function recomputeUserTotals(ownerUid) {
@@ -199,6 +241,37 @@ exports.claimTerritory = onCall(
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
     if (points.length < 3) {
       throw new HttpsError("invalid-argument", "En az 3 nokta gerekir.");
+    }
+    if (points.length > MAX_CLAIM_POINTS) {
+      throw new HttpsError("invalid-argument", "Çok fazla nokta.");
+    }
+
+    // --- Anti-cheat: geometri doğrulaması ---
+    const loopArea = planarAreaM2(points);
+    if (loopArea < MIN_CLAIM_AREA_M2) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Geçerli bir halka değil (alan çok küçük)."
+      );
+    }
+    if (loopArea > MAX_CLAIM_AREA_M2) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Alan tek seferde alınamayacak kadar büyük."
+      );
+    }
+
+    // --- Anti-cheat: hız (araçla oynamayı engelle) ---
+    // Halkayı çevrelemek için en az perimetre kadar yol yürünür; perimetre/süre
+    // ortalama hızın ALT sınırıdır. Bu alt sınır bile eşiği aşıyorsa kesinlikle
+    // araç hızındadır → reddet. (Süre yoksa kontrol atlanır; geometri sınırları
+    // yine de korur.)
+    const durationSec = Number(data.durationSec) || 0;
+    if (durationSec > 0 && ringPerimeterM(points) / durationSec > MAX_SPEED_MPS) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Çok hızlı hareket algılandı (yürüyüş/koşu değil)."
+      );
     }
 
     const userDoc = await db.collection("users").doc(uid).get();
@@ -394,52 +467,78 @@ exports.renameLand = onCall(
   }
 );
 
-// TEK SEFERLİK bakım: mevcut alanlara centroid ekler ve tüm sahiplerin
-// denormalize toplamlarını yeniden hesaplar (viewport sorgusu + liderlik
-// tablosu yeni alanlara dayandığından eski veriyi taşımak için). Basit bir
-// anahtarla korunur; çalıştırıldıktan sonra kaldırılabilir.
-exports.backfillTerritories = onRequest(
-  { region: "us-central1", maxInstances: 1 },
-  async (req, res) => {
-    if (req.query.key !== "treadom-backfill-2026") {
-      res.status(403).send("forbidden");
-      return;
+// Kullanıcının hesabını ve TÜM kişisel verilerini kalıcı olarak siler (KVKK /
+// Play uyumu). İstemci salt-okunur koleksiyonlara (territories) dokunamadığı ve
+// Auth hesabını ancak admin güvenle silebileceği için bu sunucuda yapılır.
+//   - territories (ownerUid == uid)            → silinir (toprakları)
+//   - users/{uid}/runs/*                        → silinir (koşu geçmişi)
+//   - 1:1 sohbetler (katılımcı)                 → tüm sohbet + mesajları silinir
+//   - grup sohbetleri                           → kullanıcı çıkarılır + kendi mesajları silinir
+//   - users/{uid}                               → silinir
+//   - Firebase Auth hesabı                      → silinir
+exports.deleteAccount = onCall(
+  { region: "us-central1", maxInstances: 10 },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Giriş gerekli.");
     }
-    const snap = await db.collection("territories").get();
-    const owners = new Set();
-    let batch = db.batch();
-    let n = 0;
-    let updated = 0;
-    for (const doc of snap.docs) {
-      const d = doc.data();
-      if (d.ownerUid) owners.add(d.ownerUid);
-      const hasCentroid =
-        typeof d.centroidLat === "number" && typeof d.centroidLng === "number";
-      if (hasCentroid) continue;
-      const outer = (d.points || []).map((g) => ({
-        lat: g.latitude,
-        lng: g.longitude,
-      }));
-      if (outer.length < 3) continue;
-      const c = centroidOf(outer);
-      batch.update(doc.ref, { centroidLat: c.lat, centroidLng: c.lng });
-      updated++;
-      n++;
-      if (n >= 400) {
-        await batch.commit();
-        batch = db.batch();
-        n = 0;
+    const uid = request.auth.uid;
+
+    const refs = [];
+
+    // Topraklar.
+    const terr = await db
+      .collection("territories")
+      .where("ownerUid", "==", uid)
+      .get();
+    terr.forEach((d) => refs.push(d.ref));
+
+    // Koşu geçmişi (alt-koleksiyon).
+    const runs = await db
+      .collection("users")
+      .doc(uid)
+      .collection("runs")
+      .get();
+    runs.forEach((d) => refs.push(d.ref));
+
+    // Sohbetler.
+    const chats = await db
+      .collection("chats")
+      .where("participants", "array-contains", uid)
+      .get();
+    const groupBatch = db.batch();
+    let groupUpdates = 0;
+    for (const c of chats.docs) {
+      const data = c.data();
+      if (data.isGroup) {
+        // Gruptan çıkar + kendi mesajlarını sil (sohbet diğerleri için kalsın).
+        groupBatch.update(c.ref, {
+          participants: FieldValue.arrayRemove(uid),
+          [`participantNames.${uid}`]: FieldValue.delete(),
+        });
+        groupUpdates++;
+        const mine = await c.ref
+          .collection("messages")
+          .where("senderId", "==", uid)
+          .get();
+        mine.forEach((m) => refs.push(m.ref));
+      } else {
+        // 1:1 → tüm sohbeti ve mesajlarını sil.
+        const msgs = await c.ref.collection("messages").get();
+        msgs.forEach((m) => refs.push(m.ref));
+        refs.push(c.ref);
       }
     }
-    if (n > 0) await batch.commit();
 
-    for (const o of owners) {
-      await recomputeUserTotals(o).catch((e) =>
-        console.error("backfill recompute hata:", o, e)
-      );
-    }
-    res.send(
-      `done: centroids updated ${updated}, owners recomputed ${owners.size}`
-    );
+    // Kullanıcı dökümanı.
+    refs.push(db.collection("users").doc(uid));
+
+    if (groupUpdates > 0) await groupBatch.commit();
+    await deleteRefs(refs);
+
+    // Son olarak Auth hesabını sil.
+    await admin.auth().deleteUser(uid);
+
+    return { ok: true };
   }
 );

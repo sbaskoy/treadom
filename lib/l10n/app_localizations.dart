@@ -596,6 +596,12 @@ abstract class AppLocalizations {
   /// **'No land taken — go a bit farther, then loop back to close it.'**
   String get loopTooShortHint;
 
+  /// No description provided for @loopTooFastHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No land taken — you moved too fast. Treadom only counts walking or running, not driving.'**
+  String get loopTooFastHint;
+
   /// No description provided for @historyTitle.
   ///
   /// In en, this message translates to:
@@ -697,6 +703,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'How to play'**
   String get howToPlayLabel;
+
+  /// No description provided for @accountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get accountLabel;
+
+  /// No description provided for @deleteAccountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountLabel;
+
+  /// No description provided for @deleteAccountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete your account and all data'**
+  String get deleteAccountSubtitle;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This action CANNOT be undone. The following will be permanently deleted:\n\n• Your account and username\n• All your run history\n• All territories you own\n• Your chats and messages\n\nDo you want to continue?'**
+  String get deleteAccountMessage;
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @deleteAccountError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete your account. Please try again.'**
+  String get deleteAccountError;
 
   /// No description provided for @onboardingTitle1.
   ///

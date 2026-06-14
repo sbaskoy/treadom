@@ -292,6 +292,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No land taken — go a bit farther, then loop back to close it.';
 
   @override
+  String get loopTooFastHint =>
+      'No land taken — you moved too fast. Treadom only counts walking or running, not driving.';
+
+  @override
   String get historyTitle => 'Walking History';
 
   @override
@@ -362,6 +366,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get howToPlayLabel => 'How to play';
+
+  @override
+  String get accountLabel => 'Account';
+
+  @override
+  String get deleteAccountLabel => 'Delete account';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Permanently delete your account and all data';
+
+  @override
+  String get deleteAccountTitle => 'Delete your account?';
+
+  @override
+  String get deleteAccountMessage =>
+      'This action CANNOT be undone. The following will be permanently deleted:\n\n• Your account and username\n• All your run history\n• All territories you own\n• Your chats and messages\n\nDo you want to continue?';
+
+  @override
+  String get deleteAccountConfirm => 'Delete account';
+
+  @override
+  String get deleteAccountError =>
+      'Couldn\'t delete your account. Please try again.';
 
   @override
   String get onboardingTitle1 => 'Walk to claim land';

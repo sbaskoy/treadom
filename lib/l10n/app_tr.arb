@@ -95,6 +95,7 @@
   "runSavedSnack": "Tur geçmişine kaydedildi.",
   "loopNotClosedHint": "Alan alınmadı — başlangıç noktana (ya da kendi alanına) geri dönerek halkayı kapat.",
   "loopTooShortHint": "Alan alınmadı — biraz daha ilerleyip dönerek halkayı kapat.",
+  "loopTooFastHint": "Alan alınmadı — çok hızlıydın. Treadom yalnızca yürüyüş ya da koşuyu sayar, araçla gitmeyi değil.",
 
   "historyTitle": "Yürüme Geçmişi",
   "historyTooltip": "Yürüme geçmişi",
@@ -116,6 +117,13 @@
   "leaderboardCount": "{count, plural, =1{1 alan} other{{count} alan}}",
 
   "howToPlayLabel": "Nasıl oynanır",
+  "accountLabel": "Hesap",
+  "deleteAccountLabel": "Hesabı sil",
+  "deleteAccountSubtitle": "Hesabını ve tüm verilerini kalıcı olarak sil",
+  "deleteAccountTitle": "Hesabını silmek istiyor musun?",
+  "deleteAccountMessage": "Bu işlem GERİ ALINAMAZ. Şu veriler kalıcı olarak silinir:\n\n• Hesabın ve kullanıcı adın\n• Tüm koşu geçmişin\n• Sahip olduğun tüm topraklar\n• Sohbetlerin ve mesajların\n\nDevam etmek istiyor musun?",
+  "deleteAccountConfirm": "Hesabı sil",
+  "deleteAccountError": "Hesabın silinemedi. Lütfen tekrar dene.",
   "onboardingTitle1": "Yürü, alanı al",
   "onboardingBody1": "Koşuya başla ve kapalı bir döngü yürü. Çevrelediğin alan senin toprağın olur.",
   "onboardingTitle2": "Çevrele, fethet",

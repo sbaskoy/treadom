@@ -170,12 +170,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       final areaM2 = run.areaM2;
       final distanceM = run.distanceM;
       final elapsed = run.elapsed;
+      final maxSpeedMps = run.maxSpeedMps;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _finishRun(
           route: route,
           areaM2: areaM2,
           distanceM: distanceM,
           elapsed: elapsed,
+          maxSpeedMps: maxSpeedMps,
         );
       });
     }
@@ -189,13 +191,14 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     required double areaM2,
     required double distanceM,
     required Duration elapsed,
+    required double maxSpeedMps,
   }) async {
     final territory = context.read<TerritoryProvider>();
     final weightKg = context.read<WeightProvider>().weightKg;
 
     // Yalnızca kapanmış bir halka alan oluşturur. Kapanmadıysa neden olduğunu
-    // (çok kısa / halka kapanmadı) özet ekranında kullanıcıya bildiririz.
-    final loop = territory.checkLoop(route);
+    // (çok kısa / halka kapanmadı / çok hızlı) özet ekranında bildiririz.
+    final loop = territory.checkLoop(route, maxSpeedMps: maxSpeedMps);
     final canClaim = loop.valid;
 
     // Artık isim sorulmaz: kullanıcının tek alan adı (landName) kullanılır.
@@ -204,6 +207,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       areaM2: areaM2,
       distanceM: distanceM,
       elapsed: elapsed,
+      maxSpeedMps: maxSpeedMps,
     );
     if (!mounted) return;
 
@@ -433,8 +437,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     // Koşarken alanı HEMEN doldurmayız: yalnızca iz gerçekten kapalı bir halka
     // oluşturduğunda (başlangıca ya da kendi alanına dönülünce) dolu gösterilir.
     // Böylece kullanıcı halkayı kapatınca anında görsel geri bildirim alır.
-    final liveLoopClosed =
-        route.length >= 4 && territoryProvider.checkLoop(route).valid;
+    final liveLoopClosed = route.length >= 4 &&
+        territoryProvider.checkLoop(route, maxSpeedMps: run.maxSpeedMps).valid;
 
     return FlutterMap(
       mapController: _mapController,

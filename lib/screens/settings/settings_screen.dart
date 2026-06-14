@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/avatar.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/avatar_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/territory_provider.dart';
@@ -144,8 +145,92 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
+
+          const SizedBox(height: 24),
+
+          // --- Hesap (tehlikeli bölge) ---
+          _SectionTitle(l10n.accountLabel),
+          const _SettingsCard(children: [_DeleteAccountTile()]),
         ],
       ),
+    );
+  }
+}
+
+/// Hesabı kalıcı olarak silen seçenek. Önce ne silineceğini açıkça anlatan bir
+/// onay penceresi gösterir; onaylanırsa sunucuda tüm veriyi siler ve çıkış yapar.
+class _DeleteAccountTile extends StatefulWidget {
+  const _DeleteAccountTile();
+
+  @override
+  State<_DeleteAccountTile> createState() => _DeleteAccountTileState();
+}
+
+class _DeleteAccountTileState extends State<_DeleteAccountTile> {
+  bool _busy = false;
+
+  Future<void> _confirmAndDelete() async {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(Icons.warning_amber_rounded, color: scheme.error, size: 32),
+        title: Text(l10n.deleteAccountTitle),
+        content: Text(l10n.deleteAccountMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(l10n.deleteAccountConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      // Çıkış AuthGate'i otomatik olarak giriş ekranına döndürür; bu ekran da
+      // ağaçtan kalkar, ayrıca gezinmeye gerek yoktur.
+      await context.read<AuthProvider>().deleteAccount();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      showAppSnackBar(context, l10n.deleteAccountError,
+          type: AppSnackBarType.error);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: _busy
+          ? SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: scheme.error,
+              ),
+            )
+          : Icon(Icons.delete_forever_rounded, color: scheme.error),
+      title: Text(
+        l10n.deleteAccountLabel,
+        style: TextStyle(color: scheme.error, fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(l10n.deleteAccountSubtitle),
+      onTap: _busy ? null : _confirmAndDelete,
     );
   }
 }

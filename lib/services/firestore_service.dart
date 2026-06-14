@@ -68,6 +68,14 @@ class FirestoreService {
     await callable.call(<String, dynamic>{'landName': landName.trim()});
   }
 
+  /// Kullanıcının hesabını ve TÜM kişisel verilerini (topraklar, koşu geçmişi,
+  /// sohbetler, kullanıcı dökümanı ve Auth hesabı) sunucuda kalıcı olarak siler.
+  Future<void> deleteAccount() async {
+    final callable = FirebaseFunctions.instanceFor(region: 'us-central1')
+        .httpsCallable('deleteAccount');
+    await callable.call();
+  }
+
   /// Belirli bir kullanıcının dökümanını getirir (yoksa null).
   Future<AppUser?> getUser(String uid) async {
     final doc = await _users.doc(uid).get();
@@ -182,6 +190,7 @@ class FirestoreService {
     required String name,
     required List<LatLng> points,
     required double areaM2,
+    int durationSec = 0,
   }) async {
     final callable = FirebaseFunctions.instanceFor(region: 'us-central1')
         .httpsCallable('claimTerritory');
@@ -190,6 +199,7 @@ class FirestoreService {
       'points': [
         for (final p in points) {'lat': p.latitude, 'lng': p.longitude},
       ],
+      'durationSec': durationSec,
     });
     final data = Map<String, dynamic>.from(res.data as Map);
     final territoryId = (data['territoryId'] as String?) ?? '';

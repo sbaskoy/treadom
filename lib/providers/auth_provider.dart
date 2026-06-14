@@ -77,6 +77,13 @@ class AuthProvider {
   /// Oturumu kapatır.
   Future<void> signOut() => _authService.signOut();
 
+  /// Hesabı ve tüm kişisel verileri sunucuda siler, ardından oturumu kapatır
+  /// (AuthGate otomatik olarak giriş ekranına döner). Hata olursa fırlatır.
+  Future<void> deleteAccount() async {
+    await _firestoreService.deleteAccount();
+    await _authService.signOut();
+  }
+
   /// Firebase hata kodlarını uygulama içi [AuthError] türüne dönüştürür.
   AuthError _mapError(FirebaseAuthException e) {
     switch (e.code) {

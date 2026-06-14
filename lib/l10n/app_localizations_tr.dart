@@ -291,6 +291,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Alan alınmadı — biraz daha ilerleyip dönerek halkayı kapat.';
 
   @override
+  String get loopTooFastHint =>
+      'Alan alınmadı — çok hızlıydın. Treadom yalnızca yürüyüş ya da koşuyu sayar, araçla gitmeyi değil.';
+
+  @override
   String get historyTitle => 'Yürüme Geçmişi';
 
   @override
@@ -361,6 +365,29 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get howToPlayLabel => 'Nasıl oynanır';
+
+  @override
+  String get accountLabel => 'Hesap';
+
+  @override
+  String get deleteAccountLabel => 'Hesabı sil';
+
+  @override
+  String get deleteAccountSubtitle =>
+      'Hesabını ve tüm verilerini kalıcı olarak sil';
+
+  @override
+  String get deleteAccountTitle => 'Hesabını silmek istiyor musun?';
+
+  @override
+  String get deleteAccountMessage =>
+      'Bu işlem GERİ ALINAMAZ. Şu veriler kalıcı olarak silinir:\n\n• Hesabın ve kullanıcı adın\n• Tüm koşu geçmişin\n• Sahip olduğun tüm topraklar\n• Sohbetlerin ve mesajların\n\nDevam etmek istiyor musun?';
+
+  @override
+  String get deleteAccountConfirm => 'Hesabı sil';
+
+  @override
+  String get deleteAccountError => 'Hesabın silinemedi. Lütfen tekrar dene.';
 
   @override
   String get onboardingTitle1 => 'Yürü, alanı al';

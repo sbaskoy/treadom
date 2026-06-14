@@ -32,6 +32,13 @@ class RunTaskHandler extends TaskHandler {
   double _areaM2 = 0;
   DateTime _startedAt = DateTime.now();
 
+  // Hız takibi (araç hızı / sahte konum tespiti için). GPS gürültüsüne karşı
+  // anlık hız üstel hareketli ortalamayla (EMA) yumuşatılır; turun en yüksek
+  // yumuşatılmış hızı saklanır.
+  double _maxSpeedMps = 0;
+  double _emaSpeedMps = 0;
+  DateTime? _lastSampleAt;
+
   // Ana izolattan gelen yerelleştirilmiş metin parçaları ve kullanıcı kilosu.
   String _title = 'Treadom';
   String _unitKm = 'km';
@@ -85,9 +92,11 @@ class RunTaskHandler extends TaskHandler {
 
   void _onPosition(Position pos) {
     final point = LatLng(pos.latitude, pos.longitude);
+    final segDist = _route.isNotEmpty ? segmentMeters(_route.last, point) : 0.0;
     if (_route.isNotEmpty) {
-      _distanceM += segmentMeters(_route.last, point);
+      _distanceM += segDist;
     }
+    _updateSpeed(pos, segDist);
     _route.add(point);
     _areaM2 = planarAreaM2(_route);
 
@@ -97,7 +106,25 @@ class RunTaskHandler extends TaskHandler {
       'lng': pos.longitude,
       'distanceM': _distanceM,
       'areaM2': _areaM2,
+      'maxSpeedMps': _maxSpeedMps,
     });
+  }
+
+  /// Anlık hızı (GPS Doppler hızı ile konumdan türetilen hızın büyüğü) hesaplar,
+  /// EMA ile yumuşatır ve turun en yüksek yumuşatılmış hızını günceller.
+  void _updateSpeed(Position pos, double segDist) {
+    var inst = 0.0;
+    final last = _lastSampleAt;
+    if (last != null) {
+      final dt = pos.timestamp.difference(last).inMilliseconds / 1000.0;
+      if (dt > 0) inst = segDist / dt;
+    }
+    // GPS'in bildirdiği hız (varsa) genelde daha güvenilirdir; büyüğünü al.
+    if (pos.speed.isFinite && pos.speed > inst) inst = pos.speed;
+    _lastSampleAt = pos.timestamp;
+
+    _emaSpeedMps = _emaSpeedMps == 0 ? inst : 0.5 * _emaSpeedMps + 0.5 * inst;
+    if (_emaSpeedMps > _maxSpeedMps) _maxSpeedMps = _emaSpeedMps;
   }
 
   @override

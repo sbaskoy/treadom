@@ -213,6 +213,18 @@ double _distPointToSegmentM(LatLng p, LatLng a, LatLng b) {
   return sqrt((px - cx) * (px - cx) + (py - cy) * (py - cy));
 }
 
+/// Oyunda kabul edilen azami hareket hızı (m/s). ~20 km/h: en hızlı koşucuyu
+/// rahat geçirir ama bisiklet/araba bunun üzerindedir. Bunu aşan turlar alan
+/// kazandırmaz ("yürüyerek/koşarak oyna" kuralı). GPS gürültüsüne karşı
+/// istemcide kısa pencere ortalamasıyla kullanılır.
+const double kMaxRunSpeedMps = 5.56;
+
+/// Geçmişe kaydedilmesi için (fetih yoksa) bir turun en az kat etmesi gereken
+/// mesafe (metre). 25 m, yerinde dururkenki GPS sapmasını güvenle eler ama
+/// gerçek kısa yürüyüşü korur. Hareketin gerçek sinyali mesafedir (süre değil:
+/// yerinde uzun durmak da, hızlı kısa koşmak da süreyle ayırt edilemez).
+const double kMinSavedRunMeters = 25;
+
 /// Koşunun neden alan oluşturmadığını açıklar (kullanıcıya geri bildirim için).
 enum LoopFailReason {
   /// Geçerli bir döngü oluştu.
@@ -223,6 +235,9 @@ enum LoopFailReason {
 
   /// Halka kapanmadı: başlangıca (ya da kendi alanına) geri dönülmedi.
   notClosed,
+
+  /// Çok hızlı: araç hızında hareket algılandı (yürüyüş/koşu değil).
+  tooFast,
 }
 
 /// Bir koşu izinin (route) fethedilebilir bir kapalı halka oluşturup

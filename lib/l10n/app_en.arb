@@ -182,6 +182,7 @@
   "runSavedSnack": "Run saved to your history.",
   "loopNotClosedHint": "No land taken — close the loop by returning to your start point (or back into your own land).",
   "loopTooShortHint": "No land taken — go a bit farther, then loop back to close it.",
+  "loopTooFastHint": "No land taken — you moved too fast. Treadom only counts walking or running, not driving.",
 
   "historyTitle": "Walking History",
   "historyTooltip": "Walking history",
@@ -215,6 +216,13 @@
   },
 
   "howToPlayLabel": "How to play",
+  "accountLabel": "Account",
+  "deleteAccountLabel": "Delete account",
+  "deleteAccountSubtitle": "Permanently delete your account and all data",
+  "deleteAccountTitle": "Delete your account?",
+  "deleteAccountMessage": "This action CANNOT be undone. The following will be permanently deleted:\n\n• Your account and username\n• All your run history\n• All territories you own\n• Your chats and messages\n\nDo you want to continue?",
+  "deleteAccountConfirm": "Delete account",
+  "deleteAccountError": "Couldn't delete your account. Please try again.",
   "onboardingTitle1": "Walk to claim land",
   "onboardingBody1": "Start a run and walk a closed loop. The area you circle becomes your land.",
   "onboardingTitle2": "Encircle to conquer",

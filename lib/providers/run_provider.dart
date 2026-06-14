@@ -69,6 +69,16 @@ class RunProvider extends ChangeNotifier {
   /// Toplam katedilen mesafe (metre).
   double get distanceM => _distanceM;
 
+  double _maxSpeedMps = 0;
+
+  /// Tur boyunca gözlenen en yüksek (yumuşatılmış) hız (m/s). Araç hızı / sahte
+  /// konum tespiti ve "yürüyerek oyna" kapısı için kullanılır.
+  double get maxSpeedMps => _maxSpeedMps;
+
+  // Web fallback'inde hız hesabı için son örnek (mobilde görev izolatı hesaplar).
+  DateTime? _lastWebSampleAt;
+  double _emaSpeedMps = 0;
+
   DateTime? _startedAt;
   Duration _elapsed = Duration.zero;
 
@@ -85,6 +95,9 @@ class RunProvider extends ChangeNotifier {
     _route.clear();
     _areaM2 = 0;
     _distanceM = 0;
+    _maxSpeedMps = 0;
+    _emaSpeedMps = 0;
+    _lastWebSampleAt = null;
     _elapsed = Duration.zero;
     _startedAt = DateTime.now();
     _status = RunStatus.running;
@@ -146,9 +159,10 @@ class RunProvider extends ChangeNotifier {
     if (lat == null || lng == null) return;
 
     _route.add(LatLng(lat, lng));
-    // Mesafe/alan otoritesi görevdedir; buradaki değerleri onunla eşitliyoruz.
+    // Mesafe/alan/hız otoritesi görevdedir; buradaki değerleri onunla eşitliyoruz.
     _distanceM = (data['distanceM'] as num?)?.toDouble() ?? _distanceM;
     _areaM2 = (data['areaM2'] as num?)?.toDouble() ?? _areaM2;
+    _maxSpeedMps = (data['maxSpeedMps'] as num?)?.toDouble() ?? _maxSpeedMps;
     notifyListeners();
     _pushLiveActivity();
   }
@@ -156,9 +170,22 @@ class RunProvider extends ChangeNotifier {
   /// Web fallback'inde doğrudan akıştan gelen konum.
   void _onWebPosition(Position pos) {
     final point = LatLng(pos.latitude, pos.longitude);
+    final segDist = _route.isNotEmpty ? segmentMeters(_route.last, point) : 0.0;
     if (_route.isNotEmpty) {
-      _distanceM += segmentMeters(_route.last, point);
+      _distanceM += segDist;
     }
+    // Hız (araç/sahte konum tespiti) — görev izolatındaki ile aynı mantık.
+    var inst = 0.0;
+    final last = _lastWebSampleAt;
+    if (last != null) {
+      final dt = pos.timestamp.difference(last).inMilliseconds / 1000.0;
+      if (dt > 0) inst = segDist / dt;
+    }
+    if (pos.speed.isFinite && pos.speed > inst) inst = pos.speed;
+    _lastWebSampleAt = pos.timestamp;
+    _emaSpeedMps = _emaSpeedMps == 0 ? inst : 0.5 * _emaSpeedMps + 0.5 * inst;
+    if (_emaSpeedMps > _maxSpeedMps) _maxSpeedMps = _emaSpeedMps;
+
     _route.add(point);
     _areaM2 = planarAreaM2(_route);
     notifyListeners();

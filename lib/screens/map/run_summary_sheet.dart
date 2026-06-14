@@ -110,10 +110,14 @@ Future<void> showRunSummary(
               if (!claimed) ...[
                 const SizedBox(height: 16),
                 _ResultChip(
-                  icon: Icons.info_outline_rounded,
-                  text: loopFailReason == LoopFailReason.tooShort
-                      ? l10n.loopTooShortHint
-                      : l10n.loopNotClosedHint,
+                  icon: loopFailReason == LoopFailReason.tooFast
+                      ? Icons.directions_car_outlined
+                      : Icons.info_outline_rounded,
+                  text: switch (loopFailReason) {
+                    LoopFailReason.tooShort => l10n.loopTooShortHint,
+                    LoopFailReason.tooFast => l10n.loopTooFastHint,
+                    _ => l10n.loopNotClosedHint,
+                  },
                   color: scheme.onSurfaceVariant,
                 ),
               ],
